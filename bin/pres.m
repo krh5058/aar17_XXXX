@@ -35,15 +35,15 @@ classdef pres < handle
             fprintf('pres.m (pres): Success!\n');
         end
         
-        function dispfix(obj,src,evt) % Corresponding to lh1
+        function [t] = dispfix(obj,src,evt) % Corresponding to lh1
             obj.misc.fix1(src.monitor);
             obj.misc.fix2(src.monitor);
-            obj.temp_t = Screen('Flip',src.monitor.w);
+            t = Screen('Flip',src.monitor.w);
         end
         
-        function disptxt(obj,src,evt) % Corresponding to lh3
+        function [t] = disptxt(obj,src,evt) % Corresponding to lh3
             obj.misc.text(src.monitor,obj.txt,src.monitor.black);
-            obj.temp_t = Screen('Flip',src.monitor.w);
+            t = Screen('Flip',src.monitor.w);
         end
         
         function propset(obj,src,evt) % Corresponding to lh4

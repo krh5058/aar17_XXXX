@@ -288,6 +288,7 @@ classdef main < handle
             % Calculate timing
             if obj.misc.stop
                 t1 = obj.exp.cond(obj.misc.step)/1000;
+%                 disp(t1);
                 dispred = 1;
             else
                 t1 = obj.exp.dur1/1000;
@@ -400,15 +401,13 @@ classdef main < handle
             x3 = ((t(:,4)')*1000 - (repmat(sort(obj.exp.cond,2,'descend'),[1 2]) + repmat(obj.exp.dur2,[1 obj.misc.cal_cycles*length(obj.exp.cond)]))) - obj.exp.T; % Entire trial duration (without fixation) subtracting retrace period
             
             if abs(mean(x1)) > obj.exp.cal_thresh
-                warning(['Average time sample prior to retrace period out of threshold range (ms): ' num2str(mean(x1))]);
+                warning('Time sample prior to retrace period out of threshold range.');
             end
-            
-            if abs(mean(x2)) > obj.exp.cal_thresh
-                warning(['Average flip time stamp out of threshold range (ms): ' num2str(mean(x2))]);
+            if abs(mean(x1)) > obj.exp.cal_thresh
+                warning('Time sample prior to retrace period out of threshold range.');
             end
-            
-            if abs(mean(x3)) > obj.exp.cal_thresh
-                warning(['Average trial duration out of threshold range (ms): ' num2str(mean(x3))]);
+            if abs(mean(x1)) > obj.exp.cal_thresh
+                warning('Time sample prior to retrace period out of threshold range.');
             end
             
         end

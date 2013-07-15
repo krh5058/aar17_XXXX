@@ -59,11 +59,10 @@ fprintf('xxxx.m: Beginning presentation sequence...\n')
 
 % Wait for instructions
 RestrictKeysForKbCheck([obj.exp.keys.spacekey]);
-obj.dat.txt = obj.exp.intro;
-notify(obj,'txt');
+obj.disptxt(obj.exp.intro);
 KbStrokeWait;
 
-% RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.m]);
+RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
 
 % for i = obj.exp.order
 %     
