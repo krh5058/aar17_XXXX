@@ -34,8 +34,6 @@ try
     fprintf('xxxx.m: Object Handling...\n')
     % Object construction and event handling
     obj = main(ext,d);
-    pobj = pres(obj);
-    obj.addl(pobj);
     fprintf('xxxx.m: Object Handling success!.\n')
 catch ME
     throw(ME)
@@ -53,6 +51,7 @@ catch ME
 end
 
 fprintf('xxxx.m: Beginning presentation sequence...\n')
+warning('OFF','MATLAB:mode:EmptyInput');
 % ListenChar(2);
 % HideCursor;
 % ShowHideFullWinTaskbarMex(0);
@@ -62,23 +61,48 @@ RestrictKeysForKbCheck([obj.exp.keys.spacekey]);
 obj.disptxt(obj.exp.intro);
 KbStrokeWait;
 
-RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
+precision = 0;
 
-% for i = obj.exp.order
-%     
-%     obj.stopcount;
-%     obj.cycle(i);
-%     
-%     if obj.abort
-%         break;
-%     end
-%     
-% end
-
+if precision
+    
+    [x1,x2,x3] = obj.precisionTest;
+    
+else
+    
+    RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
+    
+    while ~obj.misc.kill
+        
+        obj.stopcount;
+        [~,~,data.RT,data.dur,~,data.pass] = obj.cycle;
+        
+        if obj.misc.abort
+            break;
+        end
+        
+        notify(obj,'record',evt(data));
+        notify(obj,'eval');
+        
+        if obj.misc.stop
+            if data.pass
+                obj.stepup; % Increase duration on success
+            else
+                obj.stepdown; % Decrease duration on fail
+            end
+        end
+        
+        obj.misc.trial = obj.misc.trial + 1;
+        
+    end
+    
+    obj.outWrite;
+    
+end
 % % Clean up
 % ListenChar(0);
 % ShowCursor; 
 % ShowHideFullWinTaskbarMex(1);
+% warning('ON','MATLAB:mode:EmptyInput');
 
 % Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
 % fclose('all');
