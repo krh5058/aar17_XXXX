@@ -3,7 +3,6 @@ classdef main < handle
     %   Detailed explanation goes here
     
     properties
-        calibrate = 0; % Calibrate mode on/off
         debug = 1; % Debug on/off
         monitor
         path
@@ -184,6 +183,8 @@ classdef main < handle
                 'do not make a key press.\n\n\n' ...
                 'Both speed and accuracy are equally important.\n\n\n' ...
                 'Press space to continue.'];
+            exp.break = ['Please take a break.\n\n\n' ...
+                'Press the "m" key to continue.'];
             exp.word = 'test';
             exp.lh.lh1 = obj.recordLh;
             exp.lh.lh2 = obj.evalLh;
@@ -216,18 +217,9 @@ classdef main < handle
             misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             
-            if obj.calibrate;
-                misc.cal_cycles = 2;
-                misc.cal_thresh = 4; % ms
-                misc.stop = 1;
-                misc.step = length(obj.exp.cond); % Descending
-                misc.buffer =  obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
-                obj.debug = 1; % Debug on
-            else
-                misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
-                misc.stop = 0; % Stop counter and flag.
-                misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
-            end
+            misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            misc.stop = 0; % Stop counter and flag.
+            misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
             misc.trial = 1; % Trial count
             misc.abort = 0;
             misc.kill = 0; % Kill flag
@@ -400,13 +392,20 @@ classdef main < handle
             end
         end
         
-         function [x1,x2,x3] = precisionTest(obj)
+        function [x1,x2,x3] = precisionTest(obj)
             % cyc1 = First time sample to meet "Stop" onset time
             % cyc2 = "Stop" onset, t1
             % cyc3 = Key press time, null if no response
             % cyc4 = Fixation onset time, t1 + 2000ms
             % cyc5 = Trial offset, after randsample of fixation duration
             % cyc6 = Pass accuracy
+            
+            obj.misc.cal_cycles = 2;
+            obj.misc.cal_thresh = 4; % ms
+            obj.misc.stop = 1;
+            obj.misc.step = length(obj.exp.cond); % Descending
+            obj.misc.buffer =  obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            obj.debug = 1; % Debug on
             
             disp('main.m (precisionTest): Running precision test.');
             
