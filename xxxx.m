@@ -5,6 +5,8 @@ function xxxx(varargin)
 %
 % Author: Ken Hwang
 % SLEIC, PSU
+%
+% See ReadMe.txt
 
 if ~ispc
     error('xxxx.m: PC support only.')
@@ -51,7 +53,6 @@ catch ME
 end
 
 fprintf('xxxx.m: Beginning presentation sequence...\n')
-warning('OFF','MATLAB:mode:EmptyInput');
 ListenChar(2);
 HideCursor;
 ShowHideFullWinTaskbarMex(0);
@@ -117,7 +118,6 @@ end
 ListenChar(0);
 ShowCursor; 
 ShowHideFullWinTaskbarMex(1);
-warning('ON','MATLAB:mode:EmptyInput');
 
 Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
 fclose('all');
