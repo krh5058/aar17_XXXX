@@ -165,9 +165,10 @@ classdef main < handle
             exp.dur1 = 200; % ms
             exp.dur2 = 2000; % ms
             exp.T = (1/60)*1000; % ms
-%             exp.s = exp.T*4; % ms
-%             s1 = 200 - 2*exp.s;
-%             sn = 200 + 4*exp.s;
+            exp.s = exp.T*4; % ms
+            s1 = 200 - 2*exp.s;
+            sn = 200 + 4*exp.s;
+%             exp.cond = s1:exp.s:sn; % ms
             exp.fixdur = 1000:3000; % ms
             exp.stopthresh = 80;
             exp.green = [0 255 0];
@@ -201,7 +202,7 @@ classdef main < handle
             obj.exp = exp;
             
             out.f_out = [exp.sid '_out'];
-            out.head1 = {'SID','Trial','Stop','Delay','RT','Code','Duration','Mean'};
+            out.head1 = {'SID','Trial','Stop','RT','Code','Duration','Mean'};
 %             out.head2 = ['Trial',cellfun(@(y)(num2str(y)),num2cell(floor(obj.exp.cond)),'UniformOutput',false)];
             out.out1 = cell([1 length(out.head1)]);
 %             out.out2 = [];
@@ -216,10 +217,9 @@ classdef main < handle
             misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             
-            misc.Z = []; % Duration delay (s)
-%             misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
             misc.stop = 0; % Stop counter and flag.
-%             misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
+            misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
             misc.trial = 1; % Trial count
             misc.abort = 0;
 %             misc.kill = 0; % Kill flag
@@ -240,13 +240,18 @@ classdef main < handle
             t = Screen('Flip',obj.monitor.w);
         end
         
-        function stepup(obj)
-            obj.misc.Z = obj.misc.Z + obj.exp.T/1000;
+        function [result] = stepup(obj)
+            if obj.misc.step < length(obj.exp.cond)
+                obj.misc.step = obj.misc.step + 1;
+                result = 1;
+            else
+                result = 0;
+            end
         end
         
         function [result] = stepdown(obj)
-            if obj.misc.Z > obj.exp.T/1000
-                obj.misc.Z = obj.misc.Z - obj.exp.T/1000;
+            if obj.misc.step > 1
+                obj.misc.step = obj.misc.step - 1;
                 result = 1;
             else
                 result = 0;
@@ -254,13 +259,7 @@ classdef main < handle
         end
         
         function [result] = stopcount(obj)
-            if obj.misc.trial == obj.exp.go_hold
-                if isnan(obj.out.out1{end,end})
-                    obj.misc.Z = obj.exp.dur1/1000;
-                else
-                    obj.misc.Z = obj.out.out1{end,end};
-                end
-            elseif obj.misc.trial > obj.exp.go_hold
+            if obj.misc.trial >= obj.exp.go_hold
                 if randi(100) > obj.exp.stopthresh
                     if obj.misc.stop <= obj.exp.stop_max
                         obj.misc.stop = obj.misc.stop + 1;
@@ -290,8 +289,7 @@ classdef main < handle
             
             % Calculate timing
             if obj.misc.stop
-%                 t1 = obj.exp.cond(obj.misc.step)/1000;
-                t1 = obj.misc.Z;
+                t1 = obj.exp.cond(obj.misc.step)/1000;
                 dispred = 1;
             else
                 t1 = obj.exp.dur1/1000;
@@ -426,7 +424,7 @@ classdef main < handle
             
             x1 = (repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,1)')*1000) - obj.exp.T; % First measured time sample subtracting retrace period
             x2 = repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,2)')*1000; % Measured flip time stamp
-            x3 = ((t(:,4)')*1000 - (repmat(sort(obj.exp.cond,2,'descend'),[1 2]) + repmat(obj.exp.dur2,[1 obj.misc.cal_cycles*length(obj.)]))) - obj.exp.T; % Entire trial duration (without fixation) subtracting retrace period
+            x3 = ((t(:,4)')*1000 - (repmat(sort(obj.exp.cond,2,'descend'),[1 2]) + repmat(obj.exp.dur2,[1 obj.misc.cal_cycles*length(obj.exp.cond)]))) - obj.exp.T; % Entire trial duration (without fixation) subtracting retrace period
             
             if abs(mean(x1)) > obj.misc.cal_thresh
                 warning(['Average time sample prior to retrace period out of threshold range (ms): ' num2str(mean(x1))]);
@@ -445,15 +443,14 @@ classdef main < handle
         function outFormat(obj,src,evt)
             if src.misc.stop
                 type = 'Stop';
-%                 temp = nan([1 length(src.out.head2)]);
-%                 temp(1) = src.misc.trial;
-%                 temp(src.misc.step+1) = evt.pass;
-%                 obj.out.evalMat(end+1,:) = temp;
+                temp = nan([1 length(src.out.head2)]);
+                temp(1) = src.misc.trial;
+                temp(src.misc.step+1) = evt.pass;
+                obj.out.evalMat(end+1,:) = temp;
             else
                 type = 'Go';
             end
-            obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,src.misc.stop,evt.delay,evt.RT,evt.code,evt.dur};
-            obj.out.out1(end,end) = mean(obj.out.out1{:,5});
+            obj.out.out1(end+1,:) = {src.exp.sid,type,stop,evt.RT,code,evt.dur,mean};
         end
         
 %         function outEval(obj,src,evt)

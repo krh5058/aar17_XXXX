@@ -1,10 +1,12 @@
-% function xxxx
+function xxxx(varargin)
 % XXXX
 % As requested by Avery Rizio
 % 7/9/13
 %
 % Author: Ken Hwang
 % SLEIC, PSU
+%
+% See ReadMe.txt
 
 if ~ispc
     error('xxxx.m: PC support only.')
@@ -51,10 +53,9 @@ catch ME
 end
 
 fprintf('xxxx.m: Beginning presentation sequence...\n')
-warning('OFF','MATLAB:mode:EmptyInput');
-% ListenChar(2);
-% HideCursor;
-% ShowHideFullWinTaskbarMex(0);
+ListenChar(2);
+HideCursor;
+ShowHideFullWinTaskbarMex(0);
 
 % Wait for instructions
 RestrictKeysForKbCheck([obj.exp.keys.spacekey]);
@@ -62,6 +63,15 @@ obj.disptxt(obj.exp.intro);
 KbStrokeWait;
 
 precision = 0;
+
+if nargin > 0
+    switch varargin{1}
+        case 'precision'
+            precision = 1;
+        otherwise
+            error('Unknown input argument.');
+    end
+end
 
 if precision
     
@@ -80,13 +90,13 @@ else
         
         obj.stopcount;
         [~,~,data.RT,data.dur,~,data.pass] = obj.cycle;
-         mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+        
         if obj.misc.abort
             break;
         end
         
         notify(obj,'record',evt(data));
-        notify(obj,'eval');
+%         notify(obj,'eval');
         
         if obj.misc.stop
             if data.pass
@@ -103,14 +113,14 @@ else
     obj.outWrite;
     
 end
-% % Clean up
-% ListenChar(0);
-% ShowCursor; 
-% ShowHideFullWinTaskbarMex(1);
-% warning('ON','MATLAB:mode:EmptyInput');
 
-% Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
-% fclose('all');
-% Screen('CloseAll');
+% Clean up
+ListenChar(0);
+ShowCursor; 
+ShowHideFullWinTaskbarMex(1);
 
-% end
+Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
+fclose('all');
+Screen('CloseAll');
+
+end

@@ -75,7 +75,7 @@ end
 
 if precision
     
-    [x1,x2,x3] = obj.precisionTest;
+%     [x1,x2,x3] = obj.precisionTest;
     
 else
     
@@ -83,23 +83,23 @@ else
     
     while ~obj.misc.kill
         
-        if obj.misc.trial==obj.exp.break_n
+        if any(obj.misc.trial==(obj.exp.stop_n:-obj.exp.break_n:1))
             obj.disptxt(obj.exp.break);
             KbStrokeWait;
         end
         
         obj.stopcount;
-        [~,~,data.RT,data.dur,~,data.pass] = obj.cycle;
+        [~,data.delay,data.RT,data.dur,~,data.code] = obj.cycle;
         
         if obj.misc.abort
             break;
         end
         
         notify(obj,'record',evt(data));
-        notify(obj,'eval');
+%         notify(obj,'eval');
         
         if obj.misc.stop
-            if data.pass
+            if data.code==1
                 obj.stepup; % Increase duration on success
             else
                 obj.stepdown; % Decrease duration on fail
