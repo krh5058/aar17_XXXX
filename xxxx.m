@@ -75,21 +75,25 @@ end
 
 if precision
     
-%     [x1,x2,x3] = obj.precisionTest;
+    t = obj.precisionTest;
+    disp(t);
     
 else
     
     RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
     
-    while ~obj.misc.kill
+    while obj.misc.trial <= obj.exp.stop_n
         
         if any(obj.misc.trial==(obj.exp.stop_n:-obj.exp.break_n:1))
             obj.disptxt(obj.exp.break);
+            RestrictKeysForKbCheck(obj.exp.keys.spacekey);
             KbStrokeWait;
+            RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
+            pause(.5);
         end
         
         obj.stopcount;
-        [~,data.delay,data.RT,data.dur,~,data.code] = obj.cycle;
+        [~,~,data.RT,data.dur,~,data.code] = obj.cycle;
         
         if obj.misc.abort
             break;

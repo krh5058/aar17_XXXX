@@ -1,6 +1,6 @@
 XXXX
 As requested by Avery Rizio
-7/22/13
+7/31/13
 
 Author: Ken Hwang
 SLEIC, PSU
@@ -10,15 +10,17 @@ SLEIC, PSU
 Package contents --
 
 1) Package essentials: ./bin/
+	- Example R script: REACT/
 	- Output script: cell2csv
 	- Primary class: main.m
 	- Event class: evt.m
+	- Hide Windows 7 Taskbar C code: ShowHideFullWinTaskbarMex.c
 	- Hide Windows 7 Taskbar Mex File: ShowHideFullWinTaskbarMex.mex
 2) Output directory: ./out/
 3) Primary call script: xxxx.m
 4) ReadMe file
 
-Usage instructions and general details --
+Usage instructions --
 
 Standard call
 >> xxxx
@@ -26,8 +28,15 @@ Standard call
 Precision testing
 >> xxxx('precision')
 
-- Data from the standard call will output to the ./out/ folder as out1 and out2 csv's.  "out1" is the trial breakdown.  "out2" contains the "Stop" trial accuracy information.
-- Precision testing will not output any data, but will display warnings afterwards detailing which criteria was not met during presentation testing.
+General details --
+
+- Data from the standard call will output to the ./out/ folder as an "out1" csv.  "out1" consists of a trial breakdown.
+- Precision testing will not output any data, but will display timing details.  
+	First column: time stamp one refresh frame prior to display.
+	Second column: time stamp of refresh display.
+	Third column: empty RT matrix.
+	Fourth column: fixation onset
+	Fifth column: trial offset (after random fixation duration)
 
 Primary script detail --
 
@@ -52,13 +61,13 @@ Properties (main.m)
 - debug (1/0) defines monitor screen selection and verbosity of task presentation feedback.
 - monitor stores all display-related information, primarily driven from PsychToolbox.  Populated by 'disp'.
 - path is the path directory structure, stored as strings.  Requires directory root and sub-directory list.  Populated by 'pathset'.
-- exp are experimental parameters including: subject info, presentation structure and timing, condition values, threshold values, color information, relevant text, "record" and "eval" event listener handles, and key mapping.  Populated by 'expset'.
+- exp are experimental parameters including: subject info, presentation structure and timing, delay values, threshold values, color information, relevant text, "record" and "eval" event listener handles, and key mapping.  Populated by 'expset'.
 - misc contains function handles for easy-access screen presentation, as well as flags and counters used by cycle().  Populated by 'expset'.
 - out contains output information and headers.  Populated by 'expset'.
 
 Events (main.m)
 - record notifies listener handle in the exp.lh structure of class main.  The listener handle is defined by recordLH(), and executes outFormat()
-- eval notifies listener handle in the exp.lh structure of class main.  The listener handle is defined by evalLH(), and executes outEval()
+- eval notifies listener handle in the exp.lh structure of class main.  The listener handle is defined by evalLH(), and executes outEval().  (Deprecated.)
 
 Methods (main.m)
 main (constructor)
@@ -68,7 +77,7 @@ recordLH
 	- Defines a listener handle for event "record", which executes outFormat().  Stored in exp.lh.
 
 evalLH
-	- Defines a listener handle for event "eval", which executes outEval().  Stored in exp.lh
+	- Defines a listener handle for event "eval", which executes outEval().  Stored in exp.lh.  (Deprecated.)
 
 pathset
 	- Requires directory root and sub-directory list.  Populates 'path' properties for object instance of class main.  Path properties are strings associated with the sub-directory list.
@@ -86,12 +95,14 @@ disptxt
 	- Displays formatted text on window pointer monitor.w.
 
 stepup
-	- Adds to the value of misc.step, if it has not reached the maximum step for exp.cond.  Output of 1 means a step was successfully executed, otherwise a value of 0 is produced.
+	- Adds an increment from misc.Z.
 
 stepdown
-	- Subtracts from the value of misc.step, if it has not reached the minimum step for exp.cond (0).  Output of 1 means a step was successfully executed, otherwise a value of 0 is produced.
+	- Subtracts an increment from misc.Z, if it has not reached a value of 0.  Output of 1 means a step was successfully executed, otherwise a value of 0 is produced.
 
 stopcount
+	- Only begins after the number of trials has reached exp.go_hold.
+	- If exp.go_hold is reached, misc.Z is initiated by using running mean of RT.  If no mean RT, then exp.dur1/1000 is set as misc.Z
 	- Evaluates a randomly generated value against the designated stop threshold (exp.stopthresh).  If it surpasses the threshold, then the misc.stop counter is added upon.  If this counter becomes larger than exp.stop_max, then the counter is reset to 0.  Output of 1 means the stop counter was successfully added upon, otherwise a value of 0 is produced.
 
 cycle
@@ -105,27 +116,26 @@ cycle
             % cyc3 = Key press time, null if no response
             % cyc4 = Fixation onset time, t1 + 2000ms
             % cyc5 = Trial offset, after randsample of fixation duration
-            % cyc6 = Pass accuracy
+            % cyc6 = coding scheme
+		1: successful stop
+		2: failed stop
+		3: successful go
+		4: failed go
 
 precisionTest
 	- Sets up calibration parameters in "misc"
-	- Runs all conditions from longest to shortest twice.
-	- Records cyc1, cyc2, and cyc4 from all trials.
-	- cyc1 values are replicated by subtracting all exp.cond values by 1 frame refresh period (x1)
-	- cyc2 values are replicated by recreating exp.cond values (x2)
-	- cyc4 values are created by adding exp.cond values to exp.dur2 and subtracting by 1 frame refresh period. (x3)
-	- If x1, x2, or x3 deviate by more than misc.cal_thresh, then warnings are produced.
+	- misc.cal_cycles allows for multiple loops
+	- Runs exp.T*misc.steps number of test trials from longest to shortest
+	- Records cyc1, cyc2, cyc4, and cyc5 from all trials
 
 outFormat
-	- Populates out.out1 with subject ID, Stop/Go, RT, and total trial duration
-	- If Stop trial, then out.evalMat is edited to include an entry for trial number and accuracy according to the duration condition.
+	- Populates out.out1 with subject ID, Stop/Go Name, Stop/Go Value, Delay duration (Stop only), RT, Coding scheme (see method: cycle), total trial duration, and running mean RT
 
-outEval
-	- Evaluates if any of the accuracy tallies in out.evalMat have reached the exp.kill_n trial length and surpass the exp.kill_acc percentage.
+outEval (Deprecated)
+	- Evaluates if any of the accuracy tallies in out.evalMat have reached the exp.kill_n trial length and surpass the exp.kill_acc percentage
 	- If these conditions are met, then trial cycling ends, and the final condition is logged in misc.final
 
 outWrite
-	- Adds a final row for calculating final accuracy for all columns in out.evalMat.  This is output as "out2" csv and stored in out.out2.
 	- Outputs "out1" csv from out.out1.
 
 Class definition details --

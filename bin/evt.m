@@ -2,7 +2,6 @@ classdef evt < event.EventData
     properties
         RT
         dur
-        delay
         code
     end
     

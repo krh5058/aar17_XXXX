@@ -183,7 +183,7 @@ classdef main < handle
                 'Both speed and accuracy are equally important.\n\n\n' ...
                 'Press space to continue.'];
             exp.break = ['Please take a break.\n\n\n' ...
-                'Press the "m" key to continue.'];
+                'Press the Spacebar to continue.'];
             exp.word = 'test';
             exp.lh.lh1 = obj.recordLh;
             exp.lh.lh2 = obj.evalLh;
@@ -217,7 +217,7 @@ classdef main < handle
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             
             misc.Z = []; % Duration delay (s)
-%             misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
             misc.stop = 0; % Stop counter and flag.
 %             misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
             misc.trial = 1; % Trial count
@@ -329,7 +329,10 @@ classdef main < handle
                 end
                 
                 if keyIsDown
-                    if find(keyCode)==obj.exp.keys.mkey
+                    if find(keyCode)==obj.exp.keys.esckey
+                        disp('main.m (cycle) Aborted.');
+                        obj.misc.abort = 1;
+                    elseif find(keyCode)==obj.exp.keys.mkey
                         if keyflag
                             cyc3 = secs-t0;
                             if obj.debug
@@ -350,9 +353,6 @@ classdef main < handle
                                 cyc6 = 3; % Success Go (3)
                             end
                         end
-                    elseif find(keyCode)==obj.exp.keys.esckey
-                        disp('main.m (cycle) Aborted.');
-                        obj.misc.abort = 1;
                     end
                     break; % Break if any key press
                 end
@@ -390,7 +390,7 @@ classdef main < handle
             end
         end
         
-        function [x1,x2,x3] = precisionTest(obj)
+        function [t] = precisionTest(obj)
             % cyc1 = First time sample to meet "Stop" onset time
             % cyc2 = "Stop" onset, t1
             % cyc3 = Key press time, null if no response
@@ -398,19 +398,22 @@ classdef main < handle
             % cyc5 = Trial offset, after randsample of fixation duration
             % cyc6 = Pass accuracy
             
-            obj.misc.cal_cycles = 2;
+            obj.misc.cal_cycles = 1;
+            obj.misc.steps = 60;
             obj.misc.cal_thresh = 4; % ms
             obj.misc.stop = 1;
-            obj.misc.step = length(obj.exp.cond); % Descending
-            obj.misc.buffer =  obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            obj.misc.Z = obj.exp.T*obj.misc.steps/1000; % Descending
+            obj.misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
             obj.debug = 1; % Debug on
             
             disp('main.m (precisionTest): Running precision test.');
             
-            t = zeros([obj.misc.cal_cycles*length(obj.exp.cond) 5]);
+            t = zeros([obj.misc.cal_cycles*obj.misc.steps 5]);
             
-            for i = 1:obj.misc.cal_cycles*length(obj.exp.cond)
-                disp(['main.m (precisionTest) "Stop" duration (ms): ' num2str(obj.exp.cond(obj.misc.step))]);
+            RestrictKeysForKbCheck(obj.exp.keys.esckey);
+            
+            for i = 1:obj.misc.cal_cycles*obj.misc.steps
+                disp(['main.m (precisionTest) "Stop" duration (s): ' num2str(obj.misc.Z)]);
                 [t(i,1),t(i,2),~,t(i,4),t(i,5),~] = obj.cycle;
                 disp(['main.m (precisionTest) First valid time sample: ' num2str(t(i,1))]);
                 disp(['main.m (precisionTest) "Stop" onset: ' num2str(t(i,2))]);
@@ -420,43 +423,47 @@ classdef main < handle
                 disp('------------------------');
                 r = obj.stepdown;
                 if ~r
-                    obj.misc.step = length(obj.exp.cond);
+                    obj.misc.Z = obj.exp.T*obj.misc.steps/1000;
                 end
             end
             
-            x1 = (repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,1)')*1000) - obj.exp.T; % First measured time sample subtracting retrace period
-            x2 = repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,2)')*1000; % Measured flip time stamp
-            x3 = ((t(:,4)')*1000 - (repmat(sort(obj.exp.cond,2,'descend'),[1 2]) + repmat(obj.exp.dur2,[1 obj.misc.cal_cycles*length(obj.)]))) - obj.exp.T; % Entire trial duration (without fixation) subtracting retrace period
-            
-            if abs(mean(x1)) > obj.misc.cal_thresh
-                warning(['Average time sample prior to retrace period out of threshold range (ms): ' num2str(mean(x1))]);
-            end
-            
-            if abs(mean(x2)) > obj.misc.cal_thresh
-                warning(['Average flip time stamp out of threshold range (ms): ' num2str(mean(x2))]);
-            end
-            
-            if abs(mean(x3)) > obj.misc.cal_thresh
-                warning(['Average trial duration out of threshold range (ms): ' num2str(mean(x3))]);
-            end
+%             x1 = (repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,1)')*1000) - obj.exp.T; % First measured time sample subtracting retrace period
+%             x2 = repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,2)')*1000; % Measured flip time stamp
+%             x3 = ((t(:,4)')*1000 - (repmat(sort(obj.exp.cond,2,'descend'),[1 2]) + repmat(obj.exp.dur2,[1 obj.misc.cal_cycles*length(obj.)]))) - obj.exp.T; % Entire trial duration (without fixation) subtracting retrace period
+%             
+%             if abs(mean(x1)) > obj.misc.cal_thresh
+%                 warning(['Average time sample prior to retrace period out of threshold range (ms): ' num2str(mean(x1))]);
+%             end
+%             
+%             if abs(mean(x2)) > obj.misc.cal_thresh
+%                 warning(['Average flip time stamp out of threshold range (ms): ' num2str(mean(x2))]);
+%             end
+%             
+%             if abs(mean(x3)) > obj.misc.cal_thresh
+%                 warning(['Average trial duration out of threshold range (ms): ' num2str(mean(x3))]);
+%             end
             
         end
         
         function outFormat(obj,src,evt)
             if src.misc.stop
                 type = 'Stop';
+                delay = obj.misc.Z;
+                stopval = 1;
 %                 temp = nan([1 length(src.out.head2)]);
 %                 temp(1) = src.misc.trial;
 %                 temp(src.misc.step+1) = evt.pass;
 %                 obj.out.evalMat(end+1,:) = temp;
             else
                 type = 'Go';
+                delay = [];
+                stopval = 0;
             end
-            obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,src.misc.stop,evt.delay,evt.RT,evt.code,evt.dur};
-            obj.out.out1(end,end) = mean(obj.out.out1{:,5});
+            obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,stopval,delay,evt.RT,evt.code,evt.dur};
+            obj.out.out1{end,end} = mean([obj.out.out1{2:end,5}]);
         end
         
-%         function outEval(obj,src,evt)
+        function outEval(obj,src,evt)
 %             if src.misc.trial > 1
 %                 sum_cond = sum(~isnan(src.out.evalMat(:,2:end)));
 %                 trial_n_pass = sum_cond >= src.exp.kill_n;
@@ -470,18 +477,18 @@ classdef main < handle
 %                     obj.misc.final = num2str(floor(src.exp.cond(both_pass)));
 %                 end
 %             end
-%         end
+        end
         
         function outWrite(obj)
                         
             fprintf('main.m (expset): Storing accuracy data.\n');
-            temp = num2cell(obj.out.evalMat);
-            temp(cellfun(@isnan,temp)) = {''};
-            
-            obj.out.out2 = [obj.out.head2; temp; ['FinalAccuracy:',num2cell(nanmean(obj.out.evalMat(:,2:end),1))] ];
+%             temp = num2cell(obj.out.evalMat);
+%             temp(cellfun(@isnan,temp)) = {''};
+%             
+%             obj.out.out2 = [obj.out.head2; temp; ['FinalAccuracy:',num2cell(nanmean(obj.out.evalMat(:,2:end),1))] ];
             
             cell2csv([obj.path.out filesep obj.out.f_out '1.csv'],obj.out.out1)
-            cell2csv([obj.path.out filesep obj.out.f_out '2.csv'],obj.out.out2)
+%             cell2csv([obj.path.out filesep obj.out.f_out '2.csv'],obj.out.out2)
         
         end
         
