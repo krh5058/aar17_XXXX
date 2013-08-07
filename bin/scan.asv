@@ -1,0 +1,45 @@
+classdef scan < main
+    %SCAN Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties
+    end
+    
+    methods
+        function obj = scan(ext,d)
+            fprintf('scan.m (scan): Initializing class scan...\n');
+            try
+                fprintf('scan.m (scan): Initializing class scan...\n');
+                obj = obj@main(ext,d);
+            catch
+            end
+        end
+        
+        function [result] = stopcount(obj)
+            %             if obj.misc.trial == obj.exp.go_hold
+            %                 if isnan(obj.out.out1{end,end})
+            %                     obj.misc.Z = obj.exp.dur1/1000;
+            %                 else
+            %                     obj.misc.Z = obj.out.out1{end,end};
+            %                 end
+            %             elseif obj.misc.trial > obj.exp.go_hold
+            %                 if randi(100) > obj.exp.stopthresh
+            %                     if obj.misc.stop <= obj.exp.stop_max
+            %                         obj.misc.stop = obj.misc.stop + 1;
+            %                         result = 1;
+            %                     else
+            %                         obj.misc.stop = 0;
+            %                         result = 0;
+            %                     end
+            %                 else
+            %                     obj.misc.stop = 0;
+            %                     result = 0;
+            %                 end
+            %             end
+            disp('placeholder');
+            result = [];
+        end
+    end
+    
+end
+

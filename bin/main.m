@@ -174,7 +174,7 @@ classdef main < handle
             exp.red = [255 0 0];
             exp.stop_max = 3;
             exp.go_hold = 15; % Trials prior to stop
-            exp.break_n = 50; % Break intervals (trial #)
+            exp.break_n = [150 100 50]; % Break intervals (trial #)
             exp.stop_n = 200; % Max trial limit
             exp.intro = ['When a word appears in green\n' ...
                 'press "m" as quickly as possible.\n\n\n' ...
