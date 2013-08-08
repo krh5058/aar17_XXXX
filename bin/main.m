@@ -201,7 +201,7 @@ classdef main < handle
             obj.exp = exp;
             
             out.f_out = [exp.sid '_out'];
-            out.head1 = {'SID','Trial','Stop','Delay','RT','Code','Duration','Mean'};
+            out.head1 = {'SID','Trial','Stop','Delay (s)','RT (s)','Code','Duration (s)','Mean (s)'};
 %             out.head2 = ['Trial',cellfun(@(y)(num2str(y)),num2cell(floor(obj.exp.cond)),'UniformOutput',false)];
             out.out1 = cell([1 length(out.head1)]);
 %             out.out2 = [];
@@ -481,7 +481,7 @@ classdef main < handle
         
         function outWrite(obj)
                         
-            fprintf('main.m (expset): Storing accuracy data.\n');
+            fprintf('main.m (outWrite): Storing accuracy data.\n');
 %             temp = num2cell(obj.out.evalMat);
 %             temp(cellfun(@isnan,temp)) = {''};
 %             

@@ -1,4 +1,9 @@
 classdef scan < main
+    %SCAN Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties
+    end
     
     methods
         function obj = scan(ext,d)
@@ -16,7 +21,7 @@ classdef scan < main
                 error('scan.m (scan): User Cancelled.')
             end
             
-            fprintf('scan.m (scan): Adding/Modifying supplemental data fields...\n');
+            fprintf('scan.m (scan): Adding supplemental data fields...\n');
             obj.exp.sid = s{1};
             obj.exp.TR = s{2}; % (ms)
             obj.misc.delay = s{3}; % (ms)
@@ -51,8 +56,7 @@ classdef scan < main
             obj.exp.keys.key3 = KbName('8*');
             obj.exp.keys.key4 = KbName('9(');  
             
-            obj.out.f_out = [obj.exp.sid '_run'];
-            obj.out.head1 = {'SID','Run','Trial','RawOnset (ms)','TROnset','Go/Stop','Stop','Delay','Response','RT (s)','Code','Duration (s)','Jitter (ms)','Mean (s)'};
+            obj.out.head1 = {'SID','Run','Trial','RawOnset','TROnset','Go/Stop','Stop','Delay','Response','RT','Code','Duration','Jitter','Mean'};
             obj.out.out1 = cell([1 length(obj.out.head1)]);
             obj.out.out1(1,:) = obj.out.head1;
             

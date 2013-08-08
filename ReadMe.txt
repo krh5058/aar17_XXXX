@@ -1,6 +1,6 @@
 XXXX
 As requested by Avery Rizio
-7/31/13
+8/8/13
 
 Author: Ken Hwang
 SLEIC, PSU
@@ -10,10 +10,12 @@ SLEIC, PSU
 Package contents --
 
 1) Package essentials: ./bin/
-	- Example R script: REACT/
 	- Output script: cell2csv
 	- Primary class: main.m
+	- Subclass: scan.m
 	- Event class: evt.m
+	- User Interface: javaui.m
+	- Jitter timing file: jit.xlsx
 	- Hide Windows 7 Taskbar C code: ShowHideFullWinTaskbarMex.c
 	- Hide Windows 7 Taskbar Mex File: ShowHideFullWinTaskbarMex.mex
 2) Output directory: ./out/
@@ -25,12 +27,16 @@ Usage instructions --
 Standard call
 >> xxxx
 
+Scanner call
+>> xxxx('scan')
+
 Precision testing
 >> xxxx('precision')
 
 General details --
 
 - Data from the standard call will output to the ./out/ folder as an "out1" csv.  "out1" consists of a trial breakdown.
+- Data from the scanner call will output to the ./out/ folder as an "run#" csv.  "run#" consists of a trial breakdown for the corresponding run number.
 - Precision testing will not output any data, but will display timing details.  
 	First column: time stamp one refresh frame prior to display.
 	Second column: time stamp of refresh display.
@@ -41,12 +47,14 @@ General details --
 Primary script detail --
 
 xxxx.m
+-Argument handling for different calls
 -Initializes directory structure
--Initializes object of class main
+-Initializes object of class main, or subclass scan
 -Initializes PsychToolBox window
--Hides desktop taskbar, start button, mouse cursor, and restricts keyboard input.
+-Hides desktop taskbar, start button, mouse cursor, and restricts keyboard input. (Non-debug only)
 -Evaluates call arguments
--Standard call loops through trials: main.stopcount(), main.cycle(), main.outFormat(), main.outEval(), main.stepup()/stepdown().  main.outWrite() after trial looping ends.
+-Standard call loops through trials: main.stopcount(), main.cycle(), main.outFormat(), main.stepup()/stepdown().  main.outWrite() after trial looping ends.
+-Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: scan.stopCount(), scan.cycle(), scan.outFormat().  main.outWrite() after trial looping ends.
 -Precision test call only executes main.precisionTest().
 
 Primary Class definition details --
@@ -140,15 +148,76 @@ outWrite
 
 Class definition details --
 
+scan.m (subclassed from main.m)
+-Methods: scan (constructor)
+-Overridden Methods: stopcount, cycle, outformat, outWrite
+
+Methods (scan.m)
+scan (constructor)
+	- Requires directory root and sub-directory list.  Executes main.m construction
+	- Calls javaui for experimental parameters
+	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.wait1, exp.wait2, exp.intro, exp.stop_n, , exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1
+
+Overridden Methods (scan.m)
+stopcount
+	- Evaluates a randomly generated value against the designated stop threshold (exp.stopthresh).  If it surpasses the threshold, then the misc.stop counter is added upon.  If this counter becomes larger than exp.stop_max, then the counter is reset to 0.  Output of 1 means the stop counter was successfully added upon, otherwise a value of 0 is produced.
+	- If threshold is passed, misc.Z is modified at a 2/1/1 ratio of the selected misc.delay, one step up from the misc.delay, or one step down from the misc.delay (converted into seconds). 
+
+cycle
+	- Runs one trial instance.
+	- Depending on Stop/Go condition, the entire trial length is calculated from timing information of the Stop duration value or the default duration value.  If it is a Stop trial, the Stop duration value is monitored with respect to the start of the trial onset.  When this time has passed, the presentation initiates the Stop condition presentation.
+	- Records one key input until trial duration is reached.  Response is recorded
+	- Does not advance presentation.
+	- Fixaton cross displayed after trial duration.  Fixation duration lasts for selected jitter duration (for that trial) from modified exp.fixdur.
+	- Output is as follows:
+            % cyc1 = First time sample to meet "Stop" onset time
+            % cyc2 = "Stop" onset, t1
+            % cyc3 = Key press time, null if no response
+            % cyc4 = Fixation onset time, t1 + 2000ms
+            % cyc5 = Trial offset, after randsample of fixation duration
+            % cyc6 = coding scheme
+		1: successful stop
+		2: failed stop
+		3: successful go
+		4: failed go
+	    % cyc7 = Response key
+
+
+outFormat
+	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms), and running mean RT (s)
+
+
+outWrite
+	- Outputs "run#" csv from out.out1.
+	- Resets out.out1
+
+Class definition details --
+
 evt.m
--Properties: RT, dur, pass
+-Properties: RT, dur, code, t, offset, resp
 -Methods: evt (constructor)
 
 Properties (evt.m)
-- RT is the currently logged reaction time
-- dur is the currently logged duration length time
-- pass is the flag for whether or not the last trial was passed or not (1/0)
+- RT is the currently logged reaction time (s)
+- dur is the currently logged duration length time (s)
+- code is the numbering scheme: 1) success stop, 2) failed stop, 3) success go, 4) failed go
+- t is the timestamp for the start of the trial (ms).  Used for 'scan' call.
+- offset is the currently logged trial offset time (s).  Used for 'scan' call.
+- resp is the key-code for the response button pressed.  Used for 'scan' call.
 
 Methods (evt.m)
 evt (Constructor)
-	- Fills RT, dur, and pass with values contained in the same field names contained within input, data.
+	- Fills RT, dur, code, t, offset, and resp with values contained in the same field names contained within input, data.
+
+UI script details --
+
+javaui.m
+
+-Import: javax.swing.*, javax.swing.table.*, java.awt.*
+
+- Displays textfields for subject ID, TR, and stop delay duration.  (Left pane)
+- Displays radio buttons for manual/automated triggering, and run start number.  (Right pane)
+- Displays "Confirm" button to verify information.  (Bottom pane)
+- Checks to prevent omitted fields
+- Cancels on user pressing "X"
+- Sends data fields to scan.m (constructor method)

@@ -53,12 +53,14 @@ end
 
 try
     fprintf('xxxx.m: Object Handling...\n')
-    % Object construction and event handling
+    % Object construction and initial key restriction
     switch state
         case 'scan'
             obj = scan(ext,d);
+            RestrictKeysForKbCheck([obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
         otherwise
             obj = main(ext,d);
+            RestrictKeysForKbCheck(obj.exp.keys.spacekey);
     end
     fprintf('xxxx.m: Object Handling success!.\n')
 catch ME
@@ -77,12 +79,14 @@ catch ME
 end
 
 fprintf('xxxx.m: Beginning presentation sequence...\n')
-ListenChar(2);
-HideCursor;
-ShowHideFullWinTaskbarMex(0);
+
+if ~obj.debug
+    ListenChar(2);
+    HideCursor;
+    ShowHideFullWinTaskbarMex(0);
+end
 
 % Wait for instructions
-RestrictKeysForKbCheck([obj.exp.keys.spacekey]);
 obj.disptxt(obj.exp.intro);
 KbStrokeWait;
 
@@ -95,26 +99,51 @@ switch state
 
     case 'scan'
         
-        obj.disptxt(obj.exp.wait1);
-        for i = obj.exp.runorder
+        for i = obj.misc.runorder
             
+            % Reset trial number
+            obj.misc.trial = 1;
+            
+            % Update run number
+            obj.misc.run = i;
+                        
             % Triggering
+            obj.disptxt(obj.exp.wait1);
             if obj.exp.trig % Auto-trigger
                 RestrictKeysForKbCheck(obj.exp.keys.tkey);
-                KbStrokeWait; % Waiting for first trigger pulse
+                obj.misc.start_t = GetSecs; % Return timestamp
+                KbStrokeWait; % Waiting for first trigger pulse, return timestamp
             else % Manual trigger
                 RestrictKeysForKbCheck(obj.exp.keys.spacekey);
                 KbStrokeWait; % Waiting for scanner operator
                 obj.disptxt(obj.exp.wait2);
+                obj.misc.start_t = GetSecs; % Return timestamp
                 pause(obj.exp.DisDaq); % Simulating DisDaq
             end
             
             % Add button box keys
-            % RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
-            
+            RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
+
             % Loop cycle
+            while obj.misc.trial <= obj.exp.stop_n
+                obj.stopcount;
+                data = [];
+                data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
+                [~,~,data.RT,data.dur,data.offset,data.code,data.resp] = obj.cycle;
+                
+                notify(obj,'record',evt(data));
+                
+                if obj.misc.abort
+                    break;
+                end
+                
+                obj.misc.trial = obj.misc.trial + 1; % Add
+                
+            end
             
-            if obj.abort
+            obj.outWrite;
+            
+            if obj.misc.abort
                 break;
             end
             
@@ -162,9 +191,11 @@ end
 
 % Clean up
 RestrictKeysForKbCheck([]);
-ListenChar(0);
-ShowCursor; 
-ShowHideFullWinTaskbarMex(1);
+if ~obj.debug
+    ListenChar(0);
+    ShowCursor;
+    ShowHideFullWinTaskbarMex(1);
+end
 
 Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);
 fclose('all');

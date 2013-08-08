@@ -3,6 +3,9 @@ classdef evt < event.EventData
         RT
         dur
         code
+        t % scan
+        offset % scan
+        resp % scan
     end
     
   methods
