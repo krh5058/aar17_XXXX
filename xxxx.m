@@ -95,7 +95,30 @@ switch state
 
     case 'scan'
         
-        disp('scan');
+        obj.disptxt(obj.exp.wait1);
+        for i = obj.exp.runorder
+            
+            % Triggering
+            if obj.exp.trig % Auto-trigger
+                RestrictKeysForKbCheck(obj.exp.keys.tkey);
+                KbStrokeWait; % Waiting for first trigger pulse
+            else % Manual trigger
+                RestrictKeysForKbCheck(obj.exp.keys.spacekey);
+                KbStrokeWait; % Waiting for scanner operator
+                obj.disptxt(obj.exp.wait2);
+                pause(obj.exp.DisDaq); % Simulating DisDaq
+            end
+            
+            % Add button box keys
+            % RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
+            
+            % Loop cycle
+            
+            if obj.abort
+                break;
+            end
+            
+        end
         
     otherwise
         

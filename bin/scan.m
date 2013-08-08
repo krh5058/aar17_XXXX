@@ -11,9 +11,38 @@ classdef scan < main
             fprintf('scan.m (scan): Attempting superclass construction...\n');
             obj = obj@main(ext,d);
             
+            fprintf('scan.m (scan): Gathering experimental parameters.\n');
+            frame = javaui;
+            waitfor(frame,'Visible','off'); % Wait for visibility to be off
+            s = getappdata(frame,'UserData'); % Get frame data
+            java.lang.System.gc();
+            
+            if isempty(s)
+                error('scan.m (scan): User Cancelled.')
+            end
+            
             fprintf('scan.m (scan): Adding supplemental data fields...\n');
+            obj.exp.sid = s{1};
+            obj.exp.TR = s{2};
+            obj.misc.Z = s{3}/1000; % (s)
+            obj.exp.trig = s{4};
+            obj.misc.runstart = s{5};
+            obj.misc.runorder = obj.misc.runstart:4;
+            
+            obj.exp.iPAT = false;
+            TRadd = 0;
+            
+            while TRadd <= 4
+                TRadd = TRadd + obj.exp.TR/1000;
+            end
+            
+            obj.exp.DisDaq = TRadd + obj.exp.iPAT*obj.exp.TR/1000 + .75; % (s)
             obj.exp.fixdur = xlsread([obj.path.bin filesep 'jit.xlsx']);
-            obj.exp.TR = 2500; % ms
+            obj.exp.wait1 = 'Ready.';
+            obj.exp.wait2 = 'Ready..';
+            obj.exp.keys.tkey = KbName('t');
+            % Add button box keys
+            % Change trial max number, remove break, etc.
             
             fprintf('scan.m (scan): Class construction success!\n');
         end
