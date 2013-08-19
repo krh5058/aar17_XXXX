@@ -101,6 +101,9 @@ switch state
         
         for i = obj.misc.runorder
             
+            % Formatting trials for each run
+            obj.formatTrials;
+            
             % Reset trial number
             obj.misc.trial = 1;
             
@@ -125,8 +128,13 @@ switch state
             RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
 
             % Loop cycle
-            while obj.misc.trial <= obj.exp.stop_n
-                obj.stopcount;
+            while obj.misc.trial <= obj.exp.max_n
+                obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+                
+                if obj.misc.stop
+                    obj.delayAdjust;
+                    obj.zCalc;
+                end
                 data = [];
                 data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
                 [~,~,data.RT,data.dur,data.offset,data.code,data.resp] = obj.cycle;
@@ -141,7 +149,7 @@ switch state
                 
             end
             
-            obj.outWrite;
+            obj.outStore;
             
             if obj.misc.abort
                 break;
@@ -149,11 +157,15 @@ switch state
             
         end
         
+        obj.outWrite;
+        
     otherwise
         
         RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
         
-        while obj.misc.trial <= obj.exp.stop_n
+        while obj.misc.trial <= obj.exp.max_n
+            
+            obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
             
             if any(obj.misc.trial==obj.exp.break_n)
                 obj.disptxt(obj.exp.break);
@@ -163,7 +175,12 @@ switch state
                 pause(.5);
             end
             
-            obj.stopcount;
+            if obj.misc.trial >= obj.exp.go_hold
+                if obj.misc.stop
+                    obj.zCalc;
+                end
+            end
+            
             [~,~,data.RT,data.dur,~,data.code] = obj.cycle;
             
             if obj.misc.abort
@@ -171,17 +188,20 @@ switch state
             end
             
             notify(obj,'record',evt(data));
-            %         notify(obj,'eval');
             
             if obj.misc.stop
                 if data.code==1
-                    obj.stepup; % Increase duration on success
+                    obj.delaydown; % Decrease delay duration on success
                 else
-                    obj.stepdown; % Decrease duration on fail
+                    obj.delayup; % Increase delay duration on fail
                 end
             end
             
             obj.misc.trial = obj.misc.trial + 1;
+            
+            if obj.debug
+                disp('------------------');
+            end
             
         end
         

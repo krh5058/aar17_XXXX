@@ -13,7 +13,6 @@ classdef main < handle
     
     events
         record
-        eval
     end
     
     methods (Static)
@@ -127,16 +126,20 @@ classdef main < handle
                 throw(ME);
             end
             
+            % Trial set-up
+            try
+                fprintf('main.m (main): Setting up trial types...\n');
+                obj.formatTrials;
+                fprintf('main.m (main): obj.expset() success!\n');
+            catch ME
+                throw(ME);
+            end
+            
         end
         
         function [lh] = recordLh(obj)
             fprintf('main.m (recordLh): Adding "record" listener handle...\n');
             lh = addlistener(obj,'record',@(src,evt)outFormat(obj,src,evt));
-        end
-        
-        function [lh] = evalLh(obj)
-            fprintf('main.m (evalLh): Adding "eval" listener handle...\n');
-            lh = addlistener(obj,'eval',@(src,evt)outEval(obj,src,evt));
         end
         
         function [path] = pathset(obj,d,ext)
@@ -165,9 +168,6 @@ classdef main < handle
             exp.dur1 = 200; % ms
             exp.dur2 = 2000; % ms
             exp.T = (1/60)*1000; % ms
-%             exp.s = exp.T*4; % ms
-%             s1 = 200 - 2*exp.s;
-%             sn = 200 + 4*exp.s;
             exp.fixdur = 1000:3000; % ms
             exp.stopthresh = 80;
             exp.green = [0 255 0];
@@ -175,7 +175,9 @@ classdef main < handle
             exp.stop_max = 3;
             exp.go_hold = 15; % Trials prior to stop
             exp.break_n = [150 100 50]; % Break intervals (trial #)
-            exp.stop_n = 200; % Max trial limit
+            exp.max_n = 200; % Max trial limit
+            exp.stop_ratio = .2; % Ratio of stop to go trials
+            exp.stop_n = round(exp.max_n*exp.stop_ratio);
             exp.intro = ['When a word appears in green\n' ...
                 'press "m" as quickly as possible.\n\n\n' ...
                 'If a word appears in red\n' ...
@@ -186,7 +188,6 @@ classdef main < handle
                 'Press the Spacebar to continue.'];
             exp.word = 'test';
             exp.lh.lh1 = obj.recordLh;
-            exp.lh.lh2 = obj.evalLh;
             
             % Keys
             KbName('UnifyKeyNames');
@@ -201,7 +202,7 @@ classdef main < handle
             obj.exp = exp;
             
             out.f_out = [exp.sid '_out'];
-            out.head1 = {'SID','Trial','Stop','Delay (s)','RT (s)','Code','Duration (s)','Mean (s)'};
+            out.head1 = {'SID','Trial','Stop','Z (s)','Delay (s)','RT (s)','Code','Duration (s)','Mean (s)'};
 %             out.head2 = ['Trial',cellfun(@(y)(num2str(y)),num2cell(floor(obj.exp.cond)),'UniformOutput',false)];
             out.out1 = cell([1 length(out.head1)]);
 %             out.out2 = [];
@@ -216,7 +217,10 @@ classdef main < handle
             misc.fix2 = @(monitor)(Screen('DrawLine',monitor.w,monitor.black,monitor.center_W,monitor.center_H-20,monitor.center_W,monitor.center_H+20,7));
             misc.text = @(monitor,txt,color)(DrawFormattedText(monitor.w,txt,'center','center',color));
             
-            misc.Z = []; % Duration delay (s)
+            misc.trialtype = []; % Trial type (stop/go)
+            misc.delay = 250/1000; % Duration delay (s)
+            misc.defaultMeanRT = 600/1000; % Default mean RT (s)
+            misc.Z = []; % Stop signal offset (s)
             misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
             misc.stop = 0; % Stop counter and flag.
 %             misc.step = 3; % Step in duration condition. 3 corresponds with starting condition of 200 ms.
@@ -240,39 +244,73 @@ classdef main < handle
             t = Screen('Flip',obj.monitor.w);
         end
         
-        function stepup(obj)
-            obj.misc.Z = obj.misc.Z + obj.exp.T/1000;
+        function formatTrials(obj)
+           [r,trialtype] = obj.testTrials; 
+           
+           while ~r
+               [r,trialtype] = obj.testTrials; 
+           end
+           
+           obj.misc.trialtype = trialtype;
+           
         end
         
-        function [result] = stepdown(obj)
-            if obj.misc.Z > obj.exp.T/1000
-                obj.misc.Z = obj.misc.Z - obj.exp.T/1000;
+        function [result,trialtype] = testTrials(obj)
+           trialtype = zeros([obj.exp.max_n 1]); 
+           result = 1;
+           
+           stop_i = sort(randsample(obj.exp.go_hold:obj.exp.max_n,obj.exp.stop_n));
+           
+           range1 = 1;
+           range2 = range1 + obj.exp.stop_max;
+           
+           while range2 <= length(stop_i)
+               
+               if all(diff(stop_i(range1:range2))==1)
+                   result = 0;
+                   break;
+               end
+               
+               range1 = range1 + 1;
+               range2 = range2 + 1;
+               
+           end
+           
+           trialtype(stop_i) = 1;
+           
+        end
+        
+        function delayup(obj)
+            obj.misc.delay = obj.misc.delay + obj.exp.T/1000;
+            if obj.debug
+                disp(['main.m (delayup) Delay value (s): ' num2str(obj.misc.delay)]);
+            end
+        end
+        
+        function [result] = delaydown(obj)
+            if obj.misc.delay > obj.exp.T/1000
+                obj.misc.delay = obj.misc.delay - obj.exp.T/1000;
                 result = 1;
             else
                 result = 0;
             end
+            
+            if obj.debug
+                disp(['main.m (delaydown) Delay value (s): ' num2str(obj.misc.delay)]);
+            end
+            
         end
         
-        function [result] = stopcount(obj)
-            if obj.misc.trial == obj.exp.go_hold
-                if isnan(obj.out.out1{end,end})
-                    obj.misc.Z = obj.exp.dur1/1000;
-                else
-                    obj.misc.Z = obj.out.out1{end,end};
-                end
-            elseif obj.misc.trial > obj.exp.go_hold
-                if randi(100) > obj.exp.stopthresh
-                    if obj.misc.stop <= obj.exp.stop_max
-                        obj.misc.stop = obj.misc.stop + 1;
-                        result = 1;
-                    else
-                        obj.misc.stop = 0;
-                        result = 0;
-                    end
-                else
-                    obj.misc.stop = 0;
-                    result = 0;
-                end
+        function zCalc(obj)
+            meanRT = obj.out.out1{end,end};
+            
+            if isnan(meanRT)
+                obj.misc.Z = obj.misc.defaultMeanRT - obj.misc.delay;
+            else
+                obj.misc.Z = meanRT - obj.misc.delay;
+            end
+            if obj.debug
+                disp(['main.m (zCalc) Z value (s): ' num2str(obj.misc.Z)]);
             end
         end
         
@@ -290,7 +328,6 @@ classdef main < handle
             
             % Calculate timing
             if obj.misc.stop
-%                 t1 = obj.exp.cond(obj.misc.step)/1000;
                 t1 = obj.misc.Z;
                 dispred = 1;
             else
@@ -302,10 +339,10 @@ classdef main < handle
             dur = t1 + (obj.exp.dur2/1000);
             
             DrawFormattedText(obj.monitor.w,obj.exp.word,'center','center',obj.exp.green);
-            t0 = Screen('Flip',obj.monitor.w);
-            
+            Screen('Flip',obj.monitor.w);
+            t0 = GetSecs;
             while (GetSecs - t0) < dur
-                tnow = str2double(regexp(num2str(GetSecs - t0),'[.]\d{1,3}','match','once')); % String conversion of time
+                tnow = GetSecs - t0;
                 [keyIsDown,secs,keyCode]=KbCheck; % Re-occuring check
                 
                 if tnow > (t1 - obj.misc.buffer)
@@ -384,10 +421,6 @@ classdef main < handle
                     cyc6 = 4; % Failed Go (4)
                 end
             end
-            
-            if obj.debug
-                disp('------------------');
-            end
         end
         
         function [t] = precisionTest(obj)
@@ -399,7 +432,7 @@ classdef main < handle
             % cyc6 = Pass accuracy
             
             obj.misc.cal_cycles = 1;
-            obj.misc.steps = 60;
+            obj.misc.steps = 10;
             obj.misc.cal_thresh = 4; % ms
             obj.misc.stop = 1;
             obj.misc.Z = obj.exp.T*obj.misc.steps/1000; % Descending
@@ -425,6 +458,11 @@ classdef main < handle
                 if ~r
                     obj.misc.Z = obj.exp.T*obj.misc.steps/1000;
                 end
+                
+                if obj.misc.abort
+                    break;
+                end
+                
             end
             
 %             x1 = (repmat(sort(obj.exp.cond,2,'descend'),[1 obj.misc.cal_cycles]) - (t(:,1)')*1000) - obj.exp.T; % First measured time sample subtracting retrace period
@@ -448,47 +486,23 @@ classdef main < handle
         function outFormat(obj,src,evt)
             if src.misc.stop
                 type = 'Stop';
-                delay = obj.misc.Z;
+                Z = obj.misc.Z;
+                delay = obj.misc.delay;
                 stopval = 1;
-%                 temp = nan([1 length(src.out.head2)]);
-%                 temp(1) = src.misc.trial;
-%                 temp(src.misc.step+1) = evt.pass;
-%                 obj.out.evalMat(end+1,:) = temp;
             else
                 type = 'Go';
+                Z = [];
                 delay = [];
                 stopval = 0;
             end
-            obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,stopval,delay,evt.RT,evt.code,evt.dur};
-            obj.out.out1{end,end} = mean([obj.out.out1{2:end,5}]);
-        end
-        
-        function outEval(obj,src,evt)
-%             if src.misc.trial > 1
-%                 sum_cond = sum(~isnan(src.out.evalMat(:,2:end)));
-%                 trial_n_pass = sum_cond >= src.exp.kill_n;
-%                 acc_pass = nanmean(src.out.evalMat(:,2:end)) > src.exp.kill_acc;
-%                 both_pass = intersect(find(trial_n_pass),find(acc_pass));
-%                 if ~isempty(both_pass)
-%                     if obj.debug
-%                         disp(['main.m (outEval) Ending conditions satisfied. Final duration condition: ' num2str(floor(src.exp.cond(both_pass)))]);
-%                     end
-%                     obj.misc.kill = 1;
-%                     obj.misc.final = num2str(floor(src.exp.cond(both_pass)));
-%                 end
-%             end
+            obj.out.out1(end+1,1:end-1) = {src.exp.sid,type,stopval,Z,delay,evt.RT,evt.code,evt.dur};
+            obj.out.out1{end,end} = mean([obj.out.out1{2:end,6}]);
         end
         
         function outWrite(obj)
                         
             fprintf('main.m (outWrite): Storing accuracy data.\n');
-%             temp = num2cell(obj.out.evalMat);
-%             temp(cellfun(@isnan,temp)) = {''};
-%             
-%             obj.out.out2 = [obj.out.head2; temp; ['FinalAccuracy:',num2cell(nanmean(obj.out.evalMat(:,2:end),1))] ];
-            
             cell2csv([obj.path.out filesep obj.out.f_out '1.csv'],obj.out.out1)
-%             cell2csv([obj.path.out filesep obj.out.f_out '2.csv'],obj.out.out2)
         
         end
         

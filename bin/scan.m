@@ -19,9 +19,12 @@ classdef scan < main
             fprintf('scan.m (scan): Adding/Modifying supplemental data fields...\n');
             obj.exp.sid = s{1};
             obj.exp.TR = s{2}; % (ms)
-            obj.misc.delay = s{3}; % (ms)
-            obj.exp.trig = s{4};
-            obj.misc.runstart = s{5};
+            obj.misc.delay = s{3}/1000; % (s)
+            obj.misc.defaultDelay = 250/1000; % (s)
+            obj.misc.delayshift = 0; % (s)
+            obj.misc.meanRT = s{4}/1000; % (s)
+            obj.exp.trig = s{5};
+            obj.misc.runstart = s{6};
             obj.misc.runorder = obj.misc.runstart:4;
             
             obj.exp.iPAT = false;
@@ -44,43 +47,50 @@ classdef scan < main
                 'do not make a key press.\n\n\n' ...
                 'Both speed and accuracy are equally important.\n\n\n' ...
                 'Press any button to continue.'];
-            obj.exp.stop_n = 50; % Max trial limit
+            obj.exp.max_n = 50; % Max trial limit
+            obj.exp.stop_ratio = .2; % Ratio of stop to go trials
+            obj.exp.stop_n = round(obj.exp.max_n*obj.exp.stop_ratio);
+            obj.exp.go_hold = 1; % Remove go trial hold
             % Right button box
-            obj.exp.keys.key1 = KbName('6^');
-            obj.exp.keys.key2 = KbName('7&');
-            obj.exp.keys.key3 = KbName('8*');
-            obj.exp.keys.key4 = KbName('9(');  
+            obj.exp.keys.key1 = KbName('1!');
+            obj.exp.keys.key2 = KbName('2@');
+            obj.exp.keys.key3 = KbName('3#');
+            obj.exp.keys.key4 = KbName('4$');  
             
             obj.out.f_out = [obj.exp.sid '_run'];
-            obj.out.head1 = {'SID','Run','Trial','RawOnset (ms)','TROnset','Go/Stop','Stop','Delay','Response','RT (s)','Code','Duration (s)','Jitter (ms)','Mean (s)'};
+            obj.out.head1 = {'SID','Run','Trial','RawOnset (ms)','TROnset','Go/Stop','Stop','Z (s)','Delay (s)','Response','RT (s)','Code','Duration (s)','Jitter (ms)','Mean (s)'};
             obj.out.out1 = cell([1 length(obj.out.head1)]);
             obj.out.out1(1,:) = obj.out.head1;
+            obj.out.out2 = cell([1 length(obj.out.head1)]);
+            obj.out.out2(1,:) = obj.out.head1;
             
             fprintf('scan.m (scan): Class construction success!\n');
         end
         
-        function [result] = stopcount(obj)
-            if randi(100) > obj.exp.stopthresh
-                if obj.misc.stop <= obj.exp.stop_max
-                    obj.misc.stop = obj.misc.stop + 1;
-                    
-                    randZ = randsample(4,1);
-                    if any(randZ==[1 2])
-                        obj.misc.Z = obj.misc.delay/1000; % (s)
-                    elseif randZ==3
-                        obj.misc.Z = obj.misc.delay + obj.exp.T; % (s)
-                    else
-                        obj.misc.Z = obj.misc.delay - obj.exp.T; % (s)
-                    end
-                    
-                    result = 1;
-                else
-                    obj.misc.stop = 0;
-                    result = 0;
-                end
+        function delayAdjust(obj)
+            switch randsample(1:4,1)
+                case 3
+                    obj.misc.delayshift = obj.exp.T;
+                case 4
+                    obj.misc.delayshift = -obj.exp.T;
+                otherwise
+                    obj.misc.delayshift = 0;
+            end
+            
+            if obj.debug
+                disp(['main.m (delayAdjust) Delay shift value (s): ' num2str(obj.misc.delayshift)]);
+            end
+            
+        end
+            
+        function zCalc(obj)
+            if obj.misc.trial == 1
+                obj.misc.Z = obj.misc.meanRT - obj.misc.delay + obj.misc.delayshift;
             else
-                obj.misc.stop = 0;
-                result = 0;
+                obj.misc.Z = obj.out.out1{end,end} - obj.misc.delay + obj.misc.delayshift;
+            end
+            if obj.debug
+                disp(['main.m (zCalc) Z value (s): ' num2str(obj.misc.Z)]);
             end
         end
         
@@ -99,21 +109,22 @@ classdef scan < main
             
             % Calculate timing
             if obj.misc.stop
-                t1 = obj.misc.Z/1000;
+                t1 = obj.misc.Z;
                 dispred = 1;
             else
                 t1 = obj.exp.dur1/1000;
                 dispred = 0;
             end
             
-            fixdur = obj.exp.fixdur(obj.misc.trial)/1000;
-            dur = t1 + (obj.exp.dur2/1000);
+            bufferfixdur = obj.exp.fixdur(obj.misc.trial)/1000; % Fixation buffer (s)
+            dur = t1 + (obj.exp.dur2/1000); % Actual trial duration (prior to fixation) (s)
+            fixdur = ((obj.misc.defaultMeanRT - obj.misc.defaultDelay) + obj.exp.dur2/1000 + bufferfixdur) - dur; % Actual fixation duration
             
             DrawFormattedText(obj.monitor.w,obj.exp.word,'center','center',obj.exp.green);
             t0 = Screen('Flip',obj.monitor.w);
             
             while (GetSecs - t0) < dur
-                tnow = str2double(regexp(num2str(GetSecs - t0),'[.]\d{1,3}','match','once')); % String conversion of time
+                tnow = GetSecs - t0;
                 [keyIsDown,secs,keyCode]=KbCheck; % Re-occuring check
                 
                 if tnow > (t1 - obj.misc.buffer)
@@ -209,28 +220,43 @@ classdef scan < main
         function outFormat(obj,src,evt)
             if src.misc.stop
                 type = 'Stop';
-                delay = obj.misc.Z;
+                Z = obj.misc.Z;
+                delay = obj.misc.delay + obj.misc.delayshift;
                 stopval = 1;
             else
                 type = 'Go';
+                Z = [];
                 delay = [];
                 stopval = 0;
             end
             
             fixdur = (evt.offset - evt.dur)*1000; % (ms)
             
-            obj.out.out1(end+1,1:end-1) = {src.exp.sid,src.misc.run,src.misc.trial,evt.t,evt.t/src.exp.TR,type,stopval,delay,evt.resp,evt.RT,evt.code,evt.dur,fixdur};
-            obj.out.out1{end,end} = mean([obj.out.out1{2:end,10}]); % Mean RT
+            obj.out.out1(end+1,1:end-1) = {src.exp.sid,src.misc.run,src.misc.trial,evt.t,evt.t/src.exp.TR,type,stopval,Z,delay,evt.resp,evt.RT,evt.code,evt.dur,fixdur};
+            obj.out.out1{end,end} = mean([obj.out.out1{2:end,11}]); % Mean RT
+        end
+        
+        function outStore(obj)
+            
+            % Store
+            fprintf('scan.m (outStore): Storing data.\n');
+            obj.out.(['run' int2str(obj.misc.run)]) = obj.out.out1;
+
+            % Reset
+            obj.out.out1 = cell([1 length(obj.out.head1)]);
+            obj.out.out1(1,:) = obj.out.head1;
+            
         end
         
         function outWrite(obj)
             
-            fprintf('scan.m (outWrite): Storing accuracy data.\n');
-            cell2csv([obj.path.out filesep obj.out.f_out int2str(obj.misc.run) '.csv'],obj.out.out1); % Output by run #
+            fprintf('scan.m (outWrite): Saving data.\n');
             
-            % Reset
-            obj.out.out1 = cell([1 length(obj.out.head1)]);
-            obj.out.out1(1,:) = obj.out.head1;
+            for i = obj.misc.runorder(1):obj.misc.run
+                obj.out.out2 = [obj.out.out2; obj.out.(['run' int2str(i)])(2:end,:)];
+            end
+            
+            cell2csv([obj.path.out filesep obj.out.f_out '.csv'],obj.out.out2); % Output by run #
             
         end
         

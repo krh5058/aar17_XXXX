@@ -53,29 +53,28 @@ xxxx.m
 -Initializes PsychToolBox window
 -Hides desktop taskbar, start button, mouse cursor, and restricts keyboard input. (Non-debug only)
 -Evaluates call arguments
--Standard call loops through trials: main.stopcount(), main.cycle(), main.outFormat(), main.stepup()/stepdown().  main.outWrite() after trial looping ends.
--Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: scan.stopCount(), scan.cycle(), scan.outFormat().  main.outWrite() after trial looping ends.
+-Standard call loops through trials: main.zCalc(), main.cycle(), main.outFormat(), main.delaydown()/delayup().  main.outWrite() after trial looping ends.
+-Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: main.formatTrials(), scan.delayAdjust(), scan.zCalc, scan.cycle(), scan.outFormat(), scan.outStore().  scan.outWrite() after trial looping ends.
 -Precision test call only executes main.precisionTest().
 
 Primary Class definition details --
 
 main.m
 -Properties: debug, monitor, path, exp, misc, out
--Events: record, eval
+-Events: record
 -Static Methods: disp
--Methods: main (constructor), recordLH, evalLH, pathset, expset, dispfix, disptxt, stepup, stepdown, stopcount, cycle, precisionTest, outFormat, outEval, outWrite
+-Methods: main (constructor), recordLH, pathset, expset, dispfix, disptxt, formatTrials, testTrials, delayup, delaydown, zCalc, cycle, precisionTest, outFormat, outWrite
 
 Properties (main.m)
 - debug (1/0) defines monitor screen selection and verbosity of task presentation feedback.
 - monitor stores all display-related information, primarily driven from PsychToolbox.  Populated by 'disp'.
 - path is the path directory structure, stored as strings.  Requires directory root and sub-directory list.  Populated by 'pathset'.
-- exp are experimental parameters including: subject info, presentation structure and timing, delay values, threshold values, color information, relevant text, "record" and "eval" event listener handles, and key mapping.  Populated by 'expset'.
-- misc contains function handles for easy-access screen presentation, as well as flags and counters used by cycle().  Populated by 'expset'.
+- exp are experimental parameters including: subject info, presentation structure and timing, delay and Z values, color information, relevant text, "record" event listener handles, and key mapping.  Populated by 'expset'.
+- misc contains function handles for easy-access screen presentation, as well as flags and trial type information used by cycle().  Populated by 'expset'.
 - out contains output information and headers.  Populated by 'expset'.
 
 Events (main.m)
 - record notifies listener handle in the exp.lh structure of class main.  The listener handle is defined by recordLH(), and executes outFormat()
-- eval notifies listener handle in the exp.lh structure of class main.  The listener handle is defined by evalLH(), and executes outEval().  (Deprecated.)
 
 Methods (main.m)
 main (constructor)
@@ -83,9 +82,6 @@ main (constructor)
 
 recordLH
 	- Defines a listener handle for event "record", which executes outFormat().  Stored in exp.lh.
-
-evalLH
-	- Defines a listener handle for event "eval", which executes outEval().  Stored in exp.lh.  (Deprecated.)
 
 pathset
 	- Requires directory root and sub-directory list.  Populates 'path' properties for object instance of class main.  Path properties are strings associated with the sub-directory list.
@@ -102,16 +98,22 @@ dispfix
 disptxt
 	- Displays formatted text on window pointer monitor.w.
 
-stepup
-	- Adds an increment from misc.Z.
+formatTrials
+	- Runs main.testTrials() until the result returns satisfactory.  Stores output to misc.trialtype.
 
-stepdown
-	- Subtracts an increment from misc.Z, if it has not reached a value of 0.  Output of 1 means a step was successfully executed, otherwise a value of 0 is produced.
+testTrials
+	- Assigns stop trials to a data series.  
+	- Randomizes placement and restricts stop trials from appearing prior to the exp.go_hold value and reports unsuccessful if stop trials occur consecutively in exp.stop_max number of trials.
+	- Output is a result value of 0/1 (unsuccessful/successful) and the trialtype data series.
 
-stopcount
-	- Only begins after the number of trials has reached exp.go_hold.
-	- If exp.go_hold is reached, misc.Z is initiated by using running mean of RT.  If no mean RT, then exp.dur1/1000 is set as misc.Z
-	- Evaluates a randomly generated value against the designated stop threshold (exp.stopthresh).  If it surpasses the threshold, then the misc.stop counter is added upon.  If this counter becomes larger than exp.stop_max, then the counter is reset to 0.  Output of 1 means the stop counter was successfully added upon, otherwise a value of 0 is produced.
+delayup
+	- Adds an increment of exp.T to misc.delay
+
+delaydown
+	- Subtracts an increment of exp.T from misc.delay, if it has not reached a value of 0.  Output of 1 means a step was successfully executed, otherwise a value of 0 is produced.
+
+zCalc
+	- misc.delay is initiated by subtracting the current value of misc.delay using running mean of RT.  If no mean RT, then the value of misc.defaultMeanRT is used.
 
 cycle
 	- Runs one trial instance.
@@ -137,11 +139,7 @@ precisionTest
 	- Records cyc1, cyc2, cyc4, and cyc5 from all trials
 
 outFormat
-	- Populates out.out1 with subject ID, Stop/Go Name, Stop/Go Value, Delay duration (Stop only), RT, Coding scheme (see method: cycle), total trial duration, and running mean RT
-
-outEval (Deprecated)
-	- Evaluates if any of the accuracy tallies in out.evalMat have reached the exp.kill_n trial length and surpass the exp.kill_acc percentage
-	- If these conditions are met, then trial cycling ends, and the final condition is logged in misc.final
+	- Populates out.out1 with subject ID, Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), RT, Coding scheme (see method: cycle), total trial duration, and running mean RT
 
 outWrite
 	- Outputs "out1" csv from out.out1.
@@ -149,26 +147,33 @@ outWrite
 Class definition details --
 
 scan.m (subclassed from main.m)
--Methods: scan (constructor)
--Overridden Methods: stopcount, cycle, outformat, outWrite
+-Methods: scan (constructor), delayAdjust
+-Overridden Methods: zCalc, cycle, outformat, outStore, outWrite
 
 Methods (scan.m)
 scan (constructor)
 	- Requires directory root and sub-directory list.  Executes main.m construction
 	- Calls javaui for experimental parameters
-	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.wait1, exp.wait2, exp.intro, exp.stop_n, , exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1
+	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, misc.defaultDelay, misc.delayshift, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.wait1, exp.wait2, exp.intro, exp.max_n, exp.stop_ratio, exp.stop_n, exp.go_hold, exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1, out.out2
+
+delayAdjust
+	- Randomly samples from 1-4.
+	- A value of 3 sets misc.delayshift to exp.T.
+	- A value of 4 sets misc.delayshift to -exp.T.
+	- Values of 1 or 2 sets misc.delayshift to 0.
 
 Overridden Methods (scan.m)
-stopcount
-	- Evaluates a randomly generated value against the designated stop threshold (exp.stopthresh).  If it surpasses the threshold, then the misc.stop counter is added upon.  If this counter becomes larger than exp.stop_max, then the counter is reset to 0.  Output of 1 means the stop counter was successfully added upon, otherwise a value of 0 is produced.
-	- If threshold is passed, misc.Z is modified at a 2/1/1 ratio of the selected misc.delay, one step up from the misc.delay, or one step down from the misc.delay (converted into seconds). 
+zCalc
+	- Calculates misc.Z from the mean RT, delay, and delay shift.
+	- If first trial misc.meanRT is used (from input value), otherwise the running mean is used.
 
 cycle
 	- Runs one trial instance.
-	- Depending on Stop/Go condition, the entire trial length is calculated from timing information of the Stop duration value or the default duration value.  If it is a Stop trial, the Stop duration value is monitored with respect to the start of the trial onset.  When this time has passed, the presentation initiates the Stop condition presentation.
+	- Depending on Stop/Go condition, the entire trial length is calculated from timing information of the Z duration value or the default duration value.  If it is a Stop trial, the Stop duration value is monitored with respect to the start of the trial onset.  When this time has passed, the presentation initiates the Stop condition presentation.
+	- Calculates an adjusted fixation duration.  First, the requested buffer fixation duration is taken for the trial, and the actual duration of the trial is calculated.  Then, the expected trial duration is calculated with the default Z duration, the trial duration, and buffer fixation duration.  Then, the actual duration of the trial is subtracted from the expected trial duration value.  The result is the adjusted (actual) fixation.
 	- Records one key input until trial duration is reached.  Response is recorded
 	- Does not advance presentation.
-	- Fixaton cross displayed after trial duration.  Fixation duration lasts for selected jitter duration (for that trial) from modified exp.fixdur.
+	- Fixaton cross displayed after trial duration.  Fixation duration lasts for the adjusted duration as calculated above.
 	- Output is as follows:
             % cyc1 = First time sample to meet "Stop" onset time
             % cyc2 = "Stop" onset, t1
@@ -184,12 +189,16 @@ cycle
 
 
 outFormat
-	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms), and running mean RT (s)
+	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms), and running mean RT (s)
 
+outStore
+	- Stores current out.out1 into out.run#, where # is the current run number.
+	- Resets out.out1
 
 outWrite
-	- Outputs "run#" csv from out.out1.
-	- Resets out.out1
+	- Iterates through number of successful runs in misc.runorder up to the current run value.
+	- Stores the out.run# into out2.
+	- Writes to out/ folder
 
 Class definition details --
 
@@ -215,9 +224,10 @@ javaui.m
 
 -Import: javax.swing.*, javax.swing.table.*, java.awt.*
 
-- Displays textfields for subject ID, TR, and stop delay duration.  (Left pane)
+- Displays textfields for subject ID, TR, stop delay, and mean RT.  (Left pane)
 - Displays radio buttons for manual/automated triggering, and run start number.  (Right pane)
 - Displays "Confirm" button to verify information.  (Bottom pane)
 - Checks to prevent omitted fields
+- Checks to prevent stop delay duration to equal or extend mean RT.
 - Cancels on user pressing "X"
 - Sends data fields to scan.m (constructor method)

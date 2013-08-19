@@ -26,27 +26,36 @@ t1 = BorderFactory.createTitledBorder('Subject ID:');
 tf1Panel.setBorder(t1);
 tf1Panel.add(tf1);
 
-% Set-up subject ID entry
+% Set-up TR entry
 tf2Panel = JPanel(GridLayout(1,1));
 tf2 = JTextField('2500');
 t2 = BorderFactory.createTitledBorder('TR (ms):');
 tf2Panel.setBorder(t2);
 tf2Panel.add(tf2);
 
-% Set-up subject ID entry
+% Set-up delay entry
 tf3Panel = JPanel(GridLayout(1,1));
-tf3 = JTextField();
+tf3 = JTextField('250');
 t3 = BorderFactory.createTitledBorder('Stop Delay (ms):');
 tf3Panel.setBorder(t3);
 tf3Panel.add(tf3);
 
+% Set-up mean RT entry
+tf4Panel = JPanel(GridLayout(1,1));
+tf4 = JTextField();
+tf4 = JTextField('600');
+t4 = BorderFactory.createTitledBorder('Mean RT (ms):');
+tf4Panel.setBorder(t4);
+tf4Panel.add(tf4);
+
 % Set-up left pane
-left = JPanel(GridLayout(3,1));
-left.setMinimumSize(Dimension(150,225));
-left.setPreferredSize(Dimension(150,225));
+left = JPanel(GridLayout(4,1));
+left.setMinimumSize(Dimension(200,225));
+left.setPreferredSize(Dimension(200,225));
 left.add(tf1Panel);
 left.add(tf2Panel);
 left.add(tf3Panel);
+left.add(tf4Panel);
 
 % Set-up trigger radio buttons
 rb1Panel = JPanel(GridLayout(2,1));
@@ -92,8 +101,8 @@ rb2Panel.add(run4);
 
 % Set-up entire right pane
 right = JPanel(GridLayout(2,1));
-right.setMinimumSize(Dimension(250,225));
-right.setPreferredSize(Dimension(250,225));
+right.setMinimumSize(Dimension(225,225));
+right.setPreferredSize(Dimension(225,225));
 right.add(rb1Panel);
 right.add(rb2Panel);
 
@@ -125,25 +134,34 @@ frame.setVisible(1);
     function onConfirm(obj,evt) % When confirm button is pressed
         sid = tf1.getText();
         tr = tf2.getText();
-        Z = tf3.getText();
+        delay = tf3.getText();
+        meanRT = tf4.getText();
         
         selectedModel1 = group1.getSelection();
         trig = selectedModel1.getActionCommand();
         selectedModel2 = group2.getSelection();
         runstart = selectedModel2.getActionCommand();
         
+        if str2double(char(delay)) >= str2double(char(meanRT))
+            javax.swing.JOptionPane.showMessageDialog(frame,'Delay is larger than Mean RT!','Timing check',javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return;
+        end
+        
         if isempty(char(sid)) % Check for empty SID
             javax.swing.JOptionPane.showMessageDialog(frame,'Subject ID is empty!','Subject ID check',javax.swing.JOptionPane.INFORMATION_MESSAGE);
         elseif isempty(char(tr)) % Check for empty TR
             javax.swing.JOptionPane.showMessageDialog(frame,'TR is empty!','TR check',javax.swing.JOptionPane.INFORMATION_MESSAGE);
-        elseif isempty(char(Z)) % Check for empty Z
+        elseif isempty(char(delay)) % Check for empty delay
             javax.swing.JOptionPane.showMessageDialog(frame,'Stop Delay is empty!','Stop Delay check',javax.swing.JOptionPane.INFORMATION_MESSAGE); 
+        elseif isempty(char(meanRT)) % Check for empty mean RT
+            javax.swing.JOptionPane.showMessageDialog(frame,'Mean RT is empty!','Mean RT check',javax.swing.JOptionPane.INFORMATION_MESSAGE); 
         else
             
             % Parameter confirmation
             infostring = sprintf(['Subject ID: ' char(sid) ...
                 '\nTR: ' char(tr) ...
-                '\nStop Delay: ' char(Z) ...
+                '\nStop Delay: ' char(delay) ...
+                '\nMean RT: ' char(meanRT) ...
                 '\nTrigger: ' char(trig) ...
                 '\nStart at Run: ' char(runstart) ...
                 '\n\nIs this correct?']);
@@ -157,7 +175,7 @@ frame.setVisible(1);
                     case 'No'
                         trig = 0;
                 end
-                setappdata(frame,'UserData',{char(sid),str2num(tr),str2num(Z),trig,str2double(runstart)});
+                setappdata(frame,'UserData',{char(sid),str2num(tr),str2num(delay),str2num(meanRT),trig,str2double(runstart)});
                 frame.dispose();
             else
             end
