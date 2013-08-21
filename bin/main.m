@@ -431,7 +431,7 @@ classdef main < handle
             % cyc5 = Trial offset, after randsample of fixation duration
             % cyc6 = Pass accuracy
             
-            obj.misc.cal_cycles = 1;
+            obj.misc.cal_cycles = 5;
             obj.misc.steps = 10;
             obj.misc.cal_thresh = 4; % ms
             obj.misc.stop = 1;
@@ -454,8 +454,8 @@ classdef main < handle
                 disp(['main.m (precisionTest) Fixation onset: ' num2str(t(i,4))]);
                 disp(['main.m (precisionTest) Trial offset: ' num2str(t(i,5))]);
                 disp('------------------------');
-                r = obj.stepdown;
-                if ~r
+                obj.misc.Z = obj.misc.Z - obj.exp.T/1000;
+                if round(obj.misc.Z*1000) <= 0
                     obj.misc.Z = obj.exp.T*obj.misc.steps/1000;
                 end
                 

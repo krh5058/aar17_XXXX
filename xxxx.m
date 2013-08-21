@@ -41,6 +41,12 @@ try
         rmpath(mainext);
     end
     
+    javauipath = which('javaui.m');
+    if ~isempty(javauipath)
+        [javauiext,~,~] = fileparts(javauipath);
+        rmpath(javauiext);
+    end
+    
     p = mfilename('fullpath');
     [ext,~,~] = fileparts(p);
     [~,d] = system(['dir /ad-h/b ' ext]);
@@ -103,6 +109,7 @@ switch state
             
             % Formatting trials for each run
             obj.formatTrials;
+            obj.formatOnset;
             
             % Reset trial number
             obj.misc.trial = 1;
@@ -126,27 +133,61 @@ switch state
             
             % Add button box keys
             RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
-
+            
+            % First presentation
+            obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+            
+            if obj.misc.stop
+                obj.delayAdjust;
+                obj.zCalc;
+            end
+            
+            data = [];
+            data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
+            [~,~,data.RT,data.dur,data.offset,data.code,data.resp] = obj.cycle;
+            
+            notify(obj,'record',evt(data));
+            
+            if obj.misc.abort
+                break;
+            end
+            
+            obj.misc.trial = obj.misc.trial + 1; % Add
+            
+            obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+            
+            if obj.misc.stop
+                obj.delayAdjust;
+                obj.zCalc;
+            end
+                
             % Loop cycle
-            while obj.misc.trial <= obj.exp.max_n
-                obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+            while (GetSecs - obj.misc.start_t) < obj.misc.trial_onset(end)/1000
                 
-                if obj.misc.stop
-                    obj.delayAdjust;
-                    obj.zCalc;
+                if (GetSecs - obj.misc.start_t) >= obj.misc.trial_onset(obj.misc.trial)/1000
+                    
+                    data = [];
+                    data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
+                    [~,~,data.RT,data.dur,~,data.code,data.resp] = obj.cycle;
+                    
+                    notify(obj,'record',evt(data));
+                    
+                    if obj.misc.abort
+                        break;
+                    end
+                    
+                    obj.misc.trial = obj.misc.trial + 1; % Add
+                    
+                    if ~(obj.misc.trial > obj.exp.max_n)
+                        obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+                        
+                        if obj.misc.stop
+                            obj.delayAdjust;
+                            obj.zCalc;
+                        end
+                    end
+                    
                 end
-                data = [];
-                data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
-                [~,~,data.RT,data.dur,data.offset,data.code,data.resp] = obj.cycle;
-                
-                notify(obj,'record',evt(data));
-                
-                if obj.misc.abort
-                    break;
-                end
-                
-                obj.misc.trial = obj.misc.trial + 1; % Add
-                
             end
             
             obj.outStore;

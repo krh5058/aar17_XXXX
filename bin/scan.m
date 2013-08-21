@@ -39,6 +39,7 @@ classdef scan < main
             obj.misc.start_t = [];
             obj.exp.keys.tkey = KbName('t');
             obj.exp.fixdur = xlsread([obj.path.bin filesep 'jit.xlsx']);
+            obj.exp.trial_onset = [];
             obj.exp.wait1 = 'Ready.';
             obj.exp.wait2 = 'Ready..';
             obj.exp.intro = ['When a word appears in green\n' ...
@@ -67,12 +68,17 @@ classdef scan < main
             fprintf('scan.m (scan): Class construction success!\n');
         end
         
+        function formatOnset(obj)
+           trial_dur = obj.misc.trialtype*2350 + ~obj.misc.trialtype*2200;
+           obj.misc.trial_onset = cumsum(trial_dur + obj.exp.fixdur);
+        end
+        
         function delayAdjust(obj)
             switch randsample(1:4,1)
                 case 3
-                    obj.misc.delayshift = obj.exp.T;
+                    obj.misc.delayshift = obj.exp.T/1000;
                 case 4
-                    obj.misc.delayshift = -obj.exp.T;
+                    obj.misc.delayshift = -obj.exp.T/1000;
                 otherwise
                     obj.misc.delayshift = 0;
             end
@@ -85,9 +91,11 @@ classdef scan < main
             
         function zCalc(obj)
             if obj.misc.trial == 1
-                obj.misc.Z = obj.misc.meanRT - obj.misc.delay + obj.misc.delayshift;
+                obj.misc.Z = obj.misc.meanRT - (obj.misc.delay + obj.misc.delayshift);
+            elseif isnan(obj.out.out1{end,end})
+                obj.misc.Z = obj.misc.meanRT - (obj.misc.delay + obj.misc.delayshift);
             else
-                obj.misc.Z = obj.out.out1{end,end} - obj.misc.delay + obj.misc.delayshift;
+                obj.misc.Z = obj.out.out1{end,end} - (obj.misc.delay + obj.misc.delayshift);
             end
             if obj.debug
                 disp(['main.m (zCalc) Z value (s): ' num2str(obj.misc.Z)]);
@@ -116,14 +124,20 @@ classdef scan < main
                 dispred = 0;
             end
             
-            bufferfixdur = obj.exp.fixdur(obj.misc.trial)/1000; % Fixation buffer (s)
+%             bufferfixdur = obj.exp.fixdur(obj.misc.trial)/1000; % Fixation buffer (s)
             dur = t1 + (obj.exp.dur2/1000); % Actual trial duration (prior to fixation) (s)
-            fixdur = ((obj.misc.defaultMeanRT - obj.misc.defaultDelay) + obj.exp.dur2/1000 + bufferfixdur) - dur; % Actual fixation duration
+%             
+%             % Calculate timing
+%             if obj.misc.stop
+%                 fixdur = ((obj.misc.defaultMeanRT - obj.misc.defaultDelay) + obj.exp.dur2/1000 + bufferfixdur) - dur; % Actual fixation duration
+%             else
+%                 fixdur = bufferfixdur; % Actual fixation duration
+%             end
             
             DrawFormattedText(obj.monitor.w,obj.exp.word,'center','center',obj.exp.green);
             t0 = Screen('Flip',obj.monitor.w);
             
-            while (GetSecs - t0) < dur
+            while (GetSecs - t0) < (dur - obj.misc.buffer)
                 tnow = GetSecs - t0;
                 [keyIsDown,secs,keyCode]=KbCheck; % Re-occuring check
                 
@@ -191,12 +205,12 @@ classdef scan < main
             if obj.debug
                 disp(['scan.m (cycle) Fixation Onset: ' num2str(cyc4)]);
             end
-            WaitSecs(fixdur);
+%             WaitSecs(fixdur);
             
-            cyc5 = GetSecs-t0;
-            if obj.debug
-                disp(['scan.m (cycle) Trial Offset: ' num2str(cyc5)]);
-            end
+%             cyc5 = GetSecs-t0;
+%             if obj.debug
+%                 disp(['scan.m (cycle) Trial Offset: ' num2str(cyc5)]);
+%             end
             
             if keyflag
                 if obj.misc.stop
@@ -253,7 +267,11 @@ classdef scan < main
             fprintf('scan.m (outWrite): Saving data.\n');
             
             for i = obj.misc.runorder(1):obj.misc.run
-                obj.out.out2 = [obj.out.out2; obj.out.(['run' int2str(i)])(2:end,:)];
+                try
+                    obj.out.out2 = [obj.out.out2; obj.out.(['run' int2str(i)])(2:end,:)];
+                catch ME
+                    disp(ME);
+                end
             end
             
             cell2csv([obj.path.out filesep obj.out.f_out '.csv'],obj.out.out2); % Output by run #
