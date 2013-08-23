@@ -54,7 +54,7 @@ xxxx.m
 -Hides desktop taskbar, start button, mouse cursor, and restricts keyboard input. (Non-debug only)
 -Evaluates call arguments
 -Standard call loops through trials: main.zCalc(), main.cycle(), main.outFormat(), main.delaydown()/delayup().  main.outWrite() after trial looping ends.
--Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: main.formatTrials(), scan.delayAdjust(), scan.zCalc, scan.cycle(), scan.outFormat(), scan.outStore().  scan.outWrite() after trial looping ends.
+-Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: main.formatTrials(), scan.formatOnset, scan.delayAdjust(), scan.zCalc, scan.cycle(), scan.outFormat(), scan.outStore().  scan.outWrite() after trial looping ends.
 -Precision test call only executes main.precisionTest().
 
 Primary Class definition details --
@@ -147,14 +147,21 @@ outWrite
 Class definition details --
 
 scan.m (subclassed from main.m)
--Methods: scan (constructor), delayAdjust
+-Methods: scan (constructor), delayAdjust, formatOnset, fixdurRecord
 -Overridden Methods: zCalc, cycle, outformat, outStore, outWrite
 
 Methods (scan.m)
 scan (constructor)
 	- Requires directory root and sub-directory list.  Executes main.m construction
 	- Calls javaui for experimental parameters
-	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, misc.defaultDelay, misc.delayshift, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.wait1, exp.wait2, exp.intro, exp.max_n, exp.stop_ratio, exp.stop_n, exp.go_hold, exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1, out.out2
+	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, misc.delayshift, misc.meanRT, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.stopdur, exp.godur, exp.trial_onset, exp.wait1, exp.wait2, exp.intro, exp.max_n, exp.stop_ratio, exp.stop_n, exp.go_hold, exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1, out.out2
+
+formatOnset
+	- Evaluates each trial duration (without fixation) according to calculated Stop (exp.stopdur) and Go (exp.godur) durations.
+	- Stop duration = (Mean RT - Delay) + exp.dur2 (2000ms)
+	- Go duration = exp.dur1 (200ms) + exp.dur2 (2000ms)
+	- Then, the cumulative sums of the trial durations are added to the DisDaq.
+	- Finally, a 0 is added to the beginning of the trial onset vector and stored in obj.misc.trial_onset
 
 delayAdjust
 	- Randomly samples from 1-4.
@@ -169,41 +176,39 @@ zCalc
 
 cycle
 	- Runs one trial instance.
-	- Depending on Stop/Go condition, the entire trial length is calculated from timing information of the Z duration value or the default duration value.  If it is a Stop trial, the Stop duration value is monitored with respect to the start of the trial onset.  When this time has passed, the presentation initiates the Stop condition presentation.
-	- Calculates an adjusted fixation duration.  First, the requested buffer fixation duration is taken for the trial, and the actual duration of the trial is calculated.  Then, the expected trial duration is calculated with the default Z duration, the trial duration, and buffer fixation duration.  Then, the actual duration of the trial is subtracted from the expected trial duration value.  The result is the adjusted (actual) fixation.
 	- Records one key input until trial duration is reached.  Response is recorded
 	- Does not advance presentation.
-	- Fixaton cross displayed after trial duration.  Fixation duration lasts for the adjusted duration as calculated above.
+	- Fixaton cross displayed after trial duration. 
 	- Output is as follows:
             % cyc1 = First time sample to meet "Stop" onset time
-            % cyc2 = "Stop" onset, t1
+            % cyc2 = "Stop" onset, t11
             % cyc3 = Key press time, null if no response
             % cyc4 = Fixation onset time, t1 + 2000ms
-            % cyc5 = Trial offset, after randsample of fixation duration
-            % cyc6 = coding scheme
-		1: successful stop
-		2: failed stop
-		3: successful go
-		4: failed go
-	    % cyc7 = Response key
+            % cyc5 = Pass accuracy
+            % cyc6 = Response key
 
 
 outFormat
-	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms), and running mean RT (s)
+	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms) -- Left blank (see method: fixdurRecord), and running mean RT (s)
+
+fixdurRecord
+	- Requires a time difference as an argument (s).  This time difference is expected to be this current trial's onset minus the last trial's onset.
+	- The time difference is subtracted by the last trial's duration (without fixation)
+	- The resulting value is entered (retroactively) as the last trial's fixation duration.
 
 outStore
 	- Stores current out.out1 into out.run#, where # is the current run number.
 	- Resets out.out1
 
 outWrite
-	- Iterates through number of successful runs in misc.runorder up to the current run value.
+	- Iterates through number of successful runs in misc.runorder up to the current run value.  Wrapped by a try/catch in case the run# was not entered into the 'out' structure.  (Occurs sometimes if block is aborted too early.)
 	- Stores the out.run# into out2.
 	- Writes to out/ folder
 
 Class definition details --
 
 evt.m
--Properties: RT, dur, code, t, offset, resp
+-Properties: RT, dur, code, t, resp
 -Methods: evt (constructor)
 
 Properties (evt.m)
@@ -211,12 +216,11 @@ Properties (evt.m)
 - dur is the currently logged duration length time (s)
 - code is the numbering scheme: 1) success stop, 2) failed stop, 3) success go, 4) failed go
 - t is the timestamp for the start of the trial (ms).  Used for 'scan' call.
-- offset is the currently logged trial offset time (s).  Used for 'scan' call.
 - resp is the key-code for the response button pressed.  Used for 'scan' call.
 
 Methods (evt.m)
 evt (Constructor)
-	- Fills RT, dur, code, t, offset, and resp with values contained in the same field names contained within input, data.
+	- Fills RT, dur, code, t, and resp with values contained in the same field names contained within input, data.
 
 UI script details --
 

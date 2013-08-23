@@ -120,6 +120,9 @@ switch state
             % Ignore last trial offset
             end_flag = 0;
             
+            % Abort keyflag
+            keyflag = 1;
+            
             if obj.debug
                 csvwrite(['run' int2str(obj.misc.run) '_onset.csv'], obj.misc.trial_onset);
             end
@@ -151,6 +154,19 @@ switch state
                 
             % Loop cycle
             while (GetSecs - obj.misc.start_t) < obj.misc.trial_onset(end)/1000
+                
+                [keyIsDown,~,keyCode]=KbCheck; % Re-occuring check
+                
+                if keyflag
+                    if keyIsDown
+                        keyflag = 0;
+                        if find(keyCode)==obj.exp.keys.esckey
+                            disp('xxxx.m: Aborted.');
+                            obj.misc.abort = 1;
+                            break;
+                        end
+                    end
+                end
                 
                 if ~end_flag % Ignore last trial offset
                     if (GetSecs - obj.misc.start_t) >= obj.misc.trial_onset(obj.misc.trial)/1000

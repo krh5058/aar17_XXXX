@@ -4,7 +4,6 @@ classdef evt < event.EventData
         dur
         code
         t % scan
-        offset % scan
         resp % scan
     end
     

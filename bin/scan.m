@@ -20,7 +20,6 @@ classdef scan < main
             obj.exp.sid = s{1};
             obj.exp.TR = s{2}; % (ms)
             obj.misc.delay = s{3}/1000; % (s)
-            obj.misc.defaultDelay = 250/1000; % (s)
             obj.misc.delayshift = 0; % (s)
             obj.misc.meanRT = s{4}/1000; % (s)
             obj.exp.trig = s{5};
@@ -39,13 +38,15 @@ classdef scan < main
             obj.misc.start_t = [];
             obj.exp.keys.tkey = KbName('t');
             obj.exp.fixdur = xlsread([obj.path.bin filesep 'jit.xlsx']);
+            obj.exp.stopdur = (obj.misc.meanRT - obj.misc.delay)*1000 + obj.exp.dur2; % ms
+            obj.exp.godur = obj.exp.dur1  + obj.exp.dur2; % ms
             obj.exp.trial_onset = [];
             obj.exp.wait1 = 'Ready.';
             obj.exp.wait2 = 'Ready..';
             obj.exp.intro = ['When a word appears in green\n' ...
                 'press as quickly as possible.\n\n\n' ...
                 'If a word appears in red\n' ...
-                'do not make a key press.\n\n\n' ...
+                'do not make a button press.\n\n\n' ...
                 'Both speed and accuracy are equally important.\n\n\n' ...
                 'Press any button to continue.'];
             obj.exp.max_n = 50; % Max trial limit
@@ -69,7 +70,7 @@ classdef scan < main
         end
         
         function formatOnset(obj)
-           trial_dur = obj.misc.trialtype*2350 + ~obj.misc.trialtype*2200;
+           trial_dur = obj.misc.trialtype*obj.exp.stopdur + ~obj.misc.trialtype*obj.exp.godur;
            onset_raw = cumsum(trial_dur + obj.exp.fixdur) + obj.exp.DisDaq*1000;
            obj.misc.trial_onset = [0; onset_raw];
         end
@@ -91,11 +92,11 @@ classdef scan < main
         end
             
         function zCalc(obj)
-            if obj.misc.trial == 1
+            if obj.misc.trial == 1 % Entered mean RT
                 obj.misc.Z = obj.misc.meanRT - (obj.misc.delay + obj.misc.delayshift);
-            elseif isnan(obj.out.out1{end,end})
+            elseif isnan(obj.out.out1{end,end}) % Entered mean RT
                 obj.misc.Z = obj.misc.meanRT - (obj.misc.delay + obj.misc.delayshift);
-            else
+            else % Running mean RT
                 obj.misc.Z = obj.out.out1{end,end} - (obj.misc.delay + obj.misc.delayshift);
             end
             if obj.debug
