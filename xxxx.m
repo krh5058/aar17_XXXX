@@ -117,6 +117,13 @@ switch state
             % Update run number
             obj.misc.run = i;
                         
+            % Ignore last trial offset
+            end_flag = 0;
+            
+            if obj.debug
+                csvwrite(['run' int2str(obj.misc.run) '_onset.csv'], obj.misc.trial_onset);
+            end
+            
             % Triggering
             obj.disptxt(obj.exp.wait1);
             if obj.exp.trig % Auto-trigger
@@ -134,26 +141,7 @@ switch state
             % Add button box keys
             RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
             
-            % First presentation
-            obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
-            
-            if obj.misc.stop
-                obj.delayAdjust;
-                obj.zCalc;
-            end
-            
-            data = [];
-            data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
-            [~,~,data.RT,data.dur,data.offset,data.code,data.resp] = obj.cycle;
-            
-            notify(obj,'record',evt(data));
-            
-            if obj.misc.abort
-                break;
-            end
-            
-            obj.misc.trial = obj.misc.trial + 1; % Add
-            
+            % Parameters for first presentation
             obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
             
             if obj.misc.stop
@@ -164,30 +152,44 @@ switch state
             % Loop cycle
             while (GetSecs - obj.misc.start_t) < obj.misc.trial_onset(end)/1000
                 
-                if (GetSecs - obj.misc.start_t) >= obj.misc.trial_onset(obj.misc.trial)/1000
-                    
-                    data = [];
-                    data.t = (GetSecs - obj.misc.start_t)*1000; % Start timestamp (ms)
-                    [~,~,data.RT,data.dur,~,data.code,data.resp] = obj.cycle;
-                    
-                    notify(obj,'record',evt(data));
-                    
-                    if obj.misc.abort
-                        break;
-                    end
-                    
-                    obj.misc.trial = obj.misc.trial + 1; % Add
-                    
-                    if ~(obj.misc.trial > obj.exp.max_n)
-                        obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+                if ~end_flag % Ignore last trial offset
+                    if (GetSecs - obj.misc.start_t) >= obj.misc.trial_onset(obj.misc.trial)/1000
                         
-                        if obj.misc.stop
-                            obj.delayAdjust;
-                            obj.zCalc;
+                        data = [];
+                        trial_start = GetSecs; % (s)
+                        data.t = (trial_start - obj.misc.start_t)*1000; % Start timestamp (ms)
+                        [~,~,data.RT,data.dur,data.code,data.resp] = obj.cycle;
+                        
+                        notify(obj,'record',evt(data));
+                        
+                        if obj.misc.trial > 1
+                            obj.fixdurRecord(trial_start - trial_start0); % Record fixation duration
+                        end
+                        
+                        trial_start0 = trial_start; % (s)
+                        
+                        if obj.misc.abort
+                            break;
+                        end
+                        
+                        obj.misc.trial = obj.misc.trial + 1; % Add
+                        
+                        if obj.misc.trial <= obj.exp.max_n
+                            obj.misc.stop = obj.misc.trialtype(obj.misc.trial);
+                            
+                            if obj.misc.stop
+                                obj.delayAdjust;
+                                obj.zCalc;
+                            end
+                        else
+                            end_flag = 1;
                         end
                     end
-                    
                 end
+            end
+            
+            if ~obj.misc.abort
+                obj.fixdurRecord(GetSecs - trial_start0); % Final fixation duration, waits until while loop finishes execution
             end
             
             obj.outStore;

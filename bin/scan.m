@@ -70,7 +70,8 @@ classdef scan < main
         
         function formatOnset(obj)
            trial_dur = obj.misc.trialtype*2350 + ~obj.misc.trialtype*2200;
-           obj.misc.trial_onset = cumsum(trial_dur + obj.exp.fixdur);
+           onset_raw = cumsum(trial_dur + obj.exp.fixdur) + obj.exp.DisDaq*1000;
+           obj.misc.trial_onset = [0; onset_raw];
         end
         
         function delayAdjust(obj)
@@ -102,18 +103,17 @@ classdef scan < main
             end
         end
         
-        function [cyc1,cyc2,cyc3,cyc4,cyc5,cyc6,cyc7] = cycle(obj)
+        function [cyc1,cyc2,cyc3,cyc4,cyc5,cyc6] = cycle(obj)
             % cyc1 = First time sample to meet "Stop" onset time
-            % cyc2 = "Stop" onset, t1
+            % cyc2 = "Stop" onset, t11
             % cyc3 = Key press time, null if no response
             % cyc4 = Fixation onset time, t1 + 2000ms
-            % cyc5 = Trial offset, after fixation duration
-            % cyc6 = Pass accuracy
-            % cyc7 = Response key
+            % cyc5 = Pass accuracy
+            % cyc6 = Response key
 
             % Initialization
             keyflag = 1;
-            cyc1 = [];cyc2 = []; cyc3 = [];cyc4 = [];cyc5 = [];cyc6 = 0;cyc7 = [];
+            cyc1 = [];cyc2 = []; cyc3 = [];cyc4 = [];cyc5 = [];cyc6 = 0;
             
             % Calculate timing
             if obj.misc.stop
@@ -124,23 +124,17 @@ classdef scan < main
                 dispred = 0;
             end
             
-%             bufferfixdur = obj.exp.fixdur(obj.misc.trial)/1000; % Fixation buffer (s)
             dur = t1 + (obj.exp.dur2/1000); % Actual trial duration (prior to fixation) (s)
-%             
-%             % Calculate timing
-%             if obj.misc.stop
-%                 fixdur = ((obj.misc.defaultMeanRT - obj.misc.defaultDelay) + obj.exp.dur2/1000 + bufferfixdur) - dur; % Actual fixation duration
-%             else
-%                 fixdur = bufferfixdur; % Actual fixation duration
-%             end
             
             DrawFormattedText(obj.monitor.w,obj.exp.word,'center','center',obj.exp.green);
             t0 = Screen('Flip',obj.monitor.w);
             
             while (GetSecs - t0) < (dur - obj.misc.buffer)
+%             while (GetSecs - t0) < dur
                 tnow = GetSecs - t0;
                 [keyIsDown,secs,keyCode]=KbCheck; % Re-occuring check
                 
+%                 if tnow > (t1 - obj.misc.buffer)
                 if tnow > (t1 - obj.misc.buffer)
                     if dispred
                         if obj.misc.stop
@@ -173,7 +167,7 @@ classdef scan < main
                             if obj.debug
                                 disp(['scan.m (cycle) Response: ' num2str(resp)]);
                             end
-                            cyc7 = resp;
+                            cyc6 = resp;
                             cyc3 = secs-t0;
                             if obj.debug
                                 disp(['scan.m (cycle) Response Time: ' num2str(cyc3)]);
@@ -183,12 +177,12 @@ classdef scan < main
                                 if obj.debug
                                     disp('scan.m (cycle) "Stop" trial response');
                                 end
-                                cyc6 = 2; % Failed Stop (2)
+                                cyc5 = 2; % Failed Stop (2)
                             else
                                 if obj.debug
                                     disp('scan.m (cycle) "Go" trial response');
                                 end
-                                cyc6 = 3; % Success Go (3)
+                                cyc5 = 3; % Success Go (3)
                             end
                         end
                         %                     break; % Break if any key press
@@ -205,24 +199,18 @@ classdef scan < main
             if obj.debug
                 disp(['scan.m (cycle) Fixation Onset: ' num2str(cyc4)]);
             end
-%             WaitSecs(fixdur);
-            
-%             cyc5 = GetSecs-t0;
-%             if obj.debug
-%                 disp(['scan.m (cycle) Trial Offset: ' num2str(cyc5)]);
-%             end
             
             if keyflag
                 if obj.misc.stop
                     if obj.debug
                         disp('scan.m (cycle) "Stop" response withheld.');
                     end
-                    cyc6 = 1; % Success Stop (1)
+                    cyc5 = 1; % Success Stop (1)
                 else
                     if obj.debug
                         disp('scan.m (cycle) "Go" trial response: No');
                     end
-                    cyc6 = 4; % Failed Go (4)
+                    cyc5 = 4; % Failed Go (4)
                 end
             end
             
@@ -244,10 +232,12 @@ classdef scan < main
                 stopval = 0;
             end
             
-            fixdur = (evt.offset - evt.dur)*1000; % (ms)
-            
-            obj.out.out1(end+1,1:end-1) = {src.exp.sid,src.misc.run,src.misc.trial,evt.t,evt.t/src.exp.TR,type,stopval,Z,delay,evt.resp,evt.RT,evt.code,evt.dur,fixdur};
+            obj.out.out1(end+1,1:end-1) = {src.exp.sid,src.misc.run,src.misc.trial,evt.t,evt.t/src.exp.TR,type,stopval,Z,delay,evt.resp,evt.RT,evt.code,evt.dur,[]};
             obj.out.out1{end,end} = mean([obj.out.out1{2:end,11}]); % Mean RT
+        end
+        
+        function fixdurRecord(obj,t)
+            obj.out.out1{obj.misc.trial,14} = (t - obj.out.out1{obj.misc.trial,13})*1000; % (ms) (Last trial (-1) + col header row (+1)): Last trial's jitter duration == between trial offset time minus last trial's duration time
         end
         
         function outStore(obj)
