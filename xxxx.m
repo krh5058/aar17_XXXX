@@ -63,6 +63,9 @@ try
     switch state
         case 'scan'
             obj = scan(ext,d);
+            obj.exp.T = (1/75)*1000; % ms
+            obj.misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            obj.exp.txtsize = 20;
             RestrictKeysForKbCheck([obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
         otherwise
             obj = main(ext,d);
@@ -78,7 +81,7 @@ try
     % Open and format window
     obj.monitor.w = Screen('OpenWindow',obj.monitor.whichScreen,obj.monitor.white);
     Screen('BlendFunction',obj.monitor.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    Screen('TextSize',obj.monitor.w,30);
+    Screen('TextSize',obj.monitor.w,obj.exp.txtsize);
     fprintf('xxxx.m: Window initialization success!.\n')
 catch ME
     throw(ME)
@@ -131,8 +134,8 @@ switch state
             obj.disptxt(obj.exp.wait1);
             if obj.exp.trig % Auto-trigger
                 RestrictKeysForKbCheck(obj.exp.keys.tkey);
-                obj.misc.start_t = GetSecs; % Return timestamp
-                KbStrokeWait; % Waiting for first trigger pulse, return timestamp
+                trig_t = KbStrokeWait; % Waiting for first trigger pulse, return timestamp
+                obj.misc.start_t = trig_t - obj.exp.DisDaq;
             else % Manual trigger
                 RestrictKeysForKbCheck(obj.exp.keys.spacekey);
                 KbStrokeWait; % Waiting for scanner operator

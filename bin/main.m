@@ -3,7 +3,7 @@ classdef main < handle
     %   Detailed explanation goes here
     
     properties
-        debug = 1; % Debug on/off
+        debug = 0; % Debug on/off
         monitor
         path
         exp
@@ -18,7 +18,7 @@ classdef main < handle
     methods (Static)
         function [monitor] = disp()
             % Find out screen number.
-            debug = 1;
+            debug = 0;
             if debug
                 %                 whichScreen = max(Screen('Screens'));
                 whichScreen = 2;
@@ -172,6 +172,7 @@ classdef main < handle
             exp.stopthresh = 80;
             exp.green = [0 255 0];
             exp.red = [255 0 0];
+            exp.word = char([116 101 115 116]);
             exp.stop_max = 3;
             exp.go_hold = 15; % Trials prior to stop
             exp.break_n = [150 100 50]; % Break intervals (trial #)
@@ -186,7 +187,7 @@ classdef main < handle
                 'Press space to continue.'];
             exp.break = ['Please take a break.\n\n\n' ...
                 'Press the Spacebar to continue.'];
-            exp.word = 'test';
+            exp.txtsize = 30;
             exp.lh.lh1 = obj.recordLh;
             
             % Keys

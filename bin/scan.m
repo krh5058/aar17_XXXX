@@ -36,9 +36,10 @@ classdef scan < main
             obj.exp.DisDaq = TRadd + obj.exp.iPAT*obj.exp.TR/1000 + .75; % (s)
             obj.misc.run = [];
             obj.misc.start_t = [];
+            obj.misc.defaultDelay = 250/1000; % (s)
             obj.exp.keys.tkey = KbName('t');
             obj.exp.fixdur = xlsread([obj.path.bin filesep 'jit.xlsx']);
-            obj.exp.stopdur = (obj.misc.meanRT - obj.misc.delay)*1000 + obj.exp.dur2; % ms
+            obj.exp.stopdur = (obj.misc.defaultMeanRT - obj.misc.defaultDelay)*1000 + obj.exp.dur2; % ms
             obj.exp.godur = obj.exp.dur1  + obj.exp.dur2; % ms
             obj.exp.trial_onset = [];
             obj.exp.wait1 = 'Ready.';
