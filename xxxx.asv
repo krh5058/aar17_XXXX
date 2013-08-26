@@ -65,6 +65,7 @@ try
             obj = scan(ext,d);
             obj.exp.T = (1/75)*1000; % ms
             obj.misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
+            obj.exp.txtsize = 20;
             RestrictKeysForKbCheck([obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
         otherwise
             obj = main(ext,d);
@@ -107,8 +108,6 @@ switch state
 
     case 'scan'
         
-        Screen('TextSize',obj.monitor.w,obj.exp.wordsize);
-        
         for i = obj.misc.runorder
             
             % Formatting trials for each run
@@ -139,17 +138,12 @@ switch state
                 csvwrite(['run' int2str(obj.misc.run) '_onset.csv'], obj.misc.trial_onset);
             end
             
-            % Wait for participant
-            RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.key1 obj.exp.keys.key2 obj.exp.keys.key3 obj.exp.keys.key4]);
-            obj.disptxt(obj.exp.break);
-            KbStrokeWait;
-            
             % Triggering
             obj.disptxt(obj.exp.wait1);
             if obj.exp.trig % Auto-trigger
                 RestrictKeysForKbCheck(obj.exp.keys.tkey);
                 trig_t = KbStrokeWait; % Waiting for first trigger pulse, return timestamp
-                obj.misc.start_t = (trig_t - obj.exp.DisDaq) + obj.exp.whilebuffer;
+                obj.misc.start_t = trig_t - obj.exp.DisDaq;
             else % Manual trigger
                 RestrictKeysForKbCheck(obj.exp.keys.spacekey);
                 KbStrokeWait; % Waiting for scanner operator
@@ -215,7 +209,6 @@ switch state
             
             if ~obj.misc.abort
                 obj.fixdurRecord(GetSecs - trial_start0); % Final fixation duration, waits until while loop finishes execution
-                pause(obj.exp.endfixdur);
             end
             
             obj.outStore;
@@ -275,6 +268,7 @@ switch state
         end
         
         obj.outWrite;
+        
 end
 
 % Clean up

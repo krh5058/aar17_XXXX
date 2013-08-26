@@ -146,7 +146,7 @@ classdef scan < main
                 if tnow > (t1 - obj.misc.buffer)
                     if dispred
                         if obj.misc.stop
-                            cyc1 = tnow;
+                            cyc1 = tn11tow;
                             if obj.debug
                                 disp(['scan.m (cycle) Current Time: ' num2str(cyc1)]);
                             end

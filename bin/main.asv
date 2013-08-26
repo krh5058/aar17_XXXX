@@ -18,7 +18,7 @@ classdef main < handle
     methods (Static)
         function [monitor] = disp()
             % Find out screen number.
-            debug = 0;
+            debug = 1;
             if debug
                 %                 whichScreen = max(Screen('Screens'));
                 whichScreen = 2;
