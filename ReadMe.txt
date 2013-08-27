@@ -1,6 +1,6 @@
 XXXX
 As requested by Avery Rizio
-8/25/13
+8/27/13
 
 Author: Ken Hwang
 SLEIC, PSU
@@ -54,7 +54,7 @@ xxxx.m
 -Hides desktop taskbar, start button, mouse cursor, and restricts keyboard input. (Non-debug only)
 -Evaluates call arguments
 -Standard call loops through trials: main.zCalc(), main.cycle(), main.outFormat(), main.delaydown()/delayup().  main.outWrite() after trial looping ends.
--Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: main.formatTrials(), scan.formatOnset, scan.delayAdjust(), scan.zCalc, scan.cycle(), scan.outFormat(), scan.outStore().  scan.outWrite() after trial looping ends.
+-Scanner call loops through the run order (beginning at requested run start number).  Within each run, triggering takes place and looping through trials: main.formatTrials(), scan.formatOnset, scan.delayAdjust(), scan.zCalc, scan.cycle(), scan.outFormat(), scan.outStore(), and a pause for exp.endfixdur.  scan.outWrite() after trial looping ends.
 -Precision test call only executes main.precisionTest().
 
 Primary Class definition details --
@@ -63,7 +63,7 @@ main.m
 -Properties: debug, monitor, path, exp, misc, out
 -Events: record
 -Static Methods: disp
--Methods: main (constructor), recordLH, pathset, expset, dispfix, disptxt, formatTrials, testTrials, delayup, delaydown, zCalc, cycle, precisionTest, outFormat, outWrite
+-Methods: main (constructor), recordLH, pathset, expset, dispfix, disptxt, formatTrials, testTrials, delayup, delaydown, zCalc, meanGo, cycle, precisionTest, outFormat, outWrite
 
 Properties (main.m)
 - debug (1/0) defines monitor screen selection and verbosity of task presentation feedback.
@@ -115,6 +115,10 @@ delaydown
 zCalc
 	- misc.delay is initiated by subtracting the current value of misc.delay using running mean of RT.  If no mean RT, then the value of misc.defaultMeanRT is used.
 
+meanGo
+	- Adds RT input to misc.RTvect.  
+	- Calculates mean of misc.RTvect.
+
 cycle
 	- Runs one trial instance.
 	- Depending on Stop/Go condition, the entire trial length is calculated from timing information of the Stop duration value or the default duration value.  If it is a Stop trial, the Stop duration value is monitored with respect to the start of the trial onset.  When this time has passed, the presentation initiates the Stop condition presentation.
@@ -154,7 +158,7 @@ Methods (scan.m)
 scan (constructor)
 	- Requires directory root and sub-directory list.  Executes main.m construction
 	- Calls javaui for experimental parameters
-	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, misc.delayshift, misc.meanRT, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, exp.keys.tkey, exp.fixdur, exp.stopdur, exp.godur, exp.trial_onset, exp.wait1, exp.wait2, exp.intro, exp.max_n, exp.stop_ratio, exp.stop_n, exp.go_hold, exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1, out.out2
+	- Adds/Modifies supplemental data fields: exp.sid, exp.TR, misc.delay, misc.delayshift, misc.i_meanRT, exp.trig, misc.runstart, misc.runorder, exp.iPAT, exp.DisDaq, misc.run, misc.start_t, misc.defaultDelay, exp.whilebuffer, exp.keys.tkey, exp.fixdur, exp.stopdur, exp.godur, exp.endfixdur, exp.trial_onset, exp.wait1, exp.wait2, exp.intro, exp.break, exp.txtsize, exp.wordsize, exp.max_n, exp.stop_ratio, exp.stop_n, exp.go_hold, exp.keys.key1, exp.keys.key2, exp.keys.key3, exp.keys.key4, out.f_out, out.head1, out.out1, out.out2
 
 formatOnset
 	- Evaluates each trial duration (without fixation) according to calculated Stop (exp.stopdur) and Go (exp.godur) durations.
@@ -172,7 +176,7 @@ delayAdjust
 Overridden Methods (scan.m)
 zCalc
 	- Calculates misc.Z from the mean RT, delay, and delay shift.
-	- If first trial misc.meanRT is used (from input value), otherwise the running mean is used.
+	- If first trial, misc.meanRT is used (from input value), otherwise the running mean is used.
 
 cycle
 	- Runs one trial instance.
@@ -189,7 +193,7 @@ cycle
 
 
 outFormat
-	- Populates out.out1 with subject ID, Run number, Trial number, RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms) -- Left blank (see method: fixdurRecord), and running mean RT (s)
+	- Populates out.out1 with subject ID, Run number, Trial number, ScheduledOnset (ms), RawOnset from start of run (ms), TROnset (converted into TRs), Stop/Go Name, Stop/Go Value, Z duration (Stop only), Delay duration (Stop only), Response, RT (s), Coding scheme (see method: cycle), total trial duration (s), Jittered duration (ms) -- Left blank (see method: fixdurRecord), and running mean RT (s)
 
 fixdurRecord
 	- Requires a time difference as an argument (s).  This time difference is expected to be this current trial's onset minus the last trial's onset.
