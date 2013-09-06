@@ -1,6 +1,6 @@
 XXXX
 As requested by Avery Rizio
-8/27/13
+9/6/13
 
 Author: Ken Hwang
 SLEIC, PSU
@@ -62,7 +62,7 @@ Primary Class definition details --
 main.m
 -Properties: debug, monitor, path, exp, misc, out
 -Events: record
--Static Methods: disp
+-Static Methods: disp, getSID
 -Methods: main (constructor), recordLH, pathset, expset, dispfix, disptxt, formatTrials, testTrials, delayup, delaydown, zCalc, meanGo, cycle, precisionTest, outFormat, outWrite
 
 Properties (main.m)
@@ -88,6 +88,9 @@ pathset
 
 disp
 	- Populates 'monitor' properties.  Largely driven by PsychToolbox related screen-handling functions.  This method is static.
+
+getSID
+	- Prompts for SID input.  This method is static.
 
 expset
 	- Populates 'exp', 'misc', and 'out' properties.

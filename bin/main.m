@@ -75,6 +75,19 @@ classdef main < handle
             
             Screen('CloseAll');
         end
+        
+        function sid = getSID()
+            sid = inputdlg('Subject ID: ');
+            
+            if isempty(sid)
+                error('main.m (getSID): User Cancelled.')
+            else
+                sid = sid{1};
+                if isempty(sid)
+                    error('main.m (getSID): SID is blank.')
+                end
+            end
+        end
     end
     
     methods
@@ -164,7 +177,13 @@ classdef main < handle
         function [exp] = expset(obj)
             
             % Experimental parameters
-            exp.sid = datestr(now,30);
+            ST = dbstack;
+            if strcmp(ST(end-1).file(1:end-2),'scan');
+                exp.sid = '';
+            else
+                exp.sid = main.getSID();
+            end
+            
             exp.dur1 = 200; % ms
             exp.dur2 = 2000; % ms
             exp.T = (1/60)*1000; % ms
@@ -203,7 +222,7 @@ classdef main < handle
             obj.exp = exp;
             
             out.f_out = [exp.sid '_out'];
-            out.head1 = {'SID','Trial','Stop','Z (s)','Delay (s)','RT (s)','Code','Duration (s)','Mean (s)'};
+            out.head1 = {'SID','Trial','Stop','Z (s)','Delay (ms)','RT (s)','Code','Duration (s)','Mean (ms)'};
 %             out.head2 = ['Trial',cellfun(@(y)(num2str(y)),num2cell(floor(obj.exp.cond)),'UniformOutput',false)];
             out.out1 = cell([1 length(out.head1)]);
 %             out.out2 = [];
@@ -222,7 +241,7 @@ classdef main < handle
             misc.delay = 250/1000; % Duration delay (s)
             misc.defaultMeanRT = 600/1000; % Default mean RT (s)
             misc.RTvect = []; % Running RT vector (Go trials only) 
-            misc.meanRT = []; % Running mean RT (Go trials only)
+            misc.meanRT = []; % Running mean RT (Go trials only) (s)
             misc.Z = []; % Stop signal offset (s)
             misc.buffer = obj.exp.T/1000; % Buffer time (ms) to compensate for next retrace
             misc.stop = 0; % Stop counter and flag.
@@ -494,7 +513,7 @@ classdef main < handle
             if src.misc.stop
                 type = 'Stop';
                 Z = obj.misc.Z;
-                delay = obj.misc.delay;
+                delay = obj.misc.delay*1000; % (ms)
                 stopval = 1;
             else
                 type = 'Go';
@@ -502,7 +521,10 @@ classdef main < handle
                 delay = [];
                 stopval = 0;
             end
-            obj.out.out1(end+1,:) = {src.exp.sid,type,stopval,Z,delay,evt.RT,evt.code,evt.dur,obj.misc.meanRT};
+            
+            meanRT = obj.misc.meanRT*1000; % (ms)
+            
+            obj.out.out1(end+1,:) = {src.exp.sid,type,stopval,Z,delay,evt.RT,evt.code,evt.dur,meanRT};
         end
         
         function outWrite(obj)

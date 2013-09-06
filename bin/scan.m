@@ -66,7 +66,7 @@ classdef scan < main
             obj.exp.keys.key4 = KbName('4$');  
             
             obj.out.f_out = [obj.exp.sid '_run'];
-            obj.out.head1 = {'SID','Run','Trial','ScheduledOnset (ms)','RawOnset (ms)','TROnset','Go/Stop','Stop','Z (s)','Delay (s)','Response','RT (s)','Code','Duration (s)','Jitter (ms)','Mean (s)'};
+            obj.out.head1 = {'SID','Run','Trial','ScheduledOnset (ms)','RawOnset (ms)','TROnset','Go/Stop','Stop','Z (s)','Delay (ms)','Response','RT (s)','Code','Duration (s)','Jitter (ms)','Mean (ms)'};
             obj.out.out1 = cell([1 length(obj.out.head1)]);
             obj.out.out1(1,:) = obj.out.head1;
             obj.out.out2 = cell([1 length(obj.out.head1)]);
@@ -232,7 +232,7 @@ classdef scan < main
             if src.misc.stop
                 type = 'Stop';
                 Z = obj.misc.Z;
-                delay = obj.misc.delay + obj.misc.delayshift;
+                delay = (obj.misc.delay + obj.misc.delayshift)*1000; % (ms)
                 stopval = 1;
             else
                 type = 'Go';
@@ -241,7 +241,9 @@ classdef scan < main
                 stopval = 0;
             end
             
-            obj.out.out1(end+1,:) = {src.exp.sid,src.misc.run,src.misc.trial,obj.misc.trial_onset(obj.misc.trial),evt.t,evt.t/src.exp.TR,type,stopval,Z,delay,evt.resp,evt.RT,evt.code,evt.dur,[],obj.misc.meanRT};
+            meanRT = obj.misc.meanRT*1000; % (ms)
+            
+            obj.out.out1(end+1,:) = {src.exp.sid,src.misc.run,src.misc.trial,obj.misc.trial_onset(obj.misc.trial),evt.t,evt.t/src.exp.TR,type,stopval,Z,delay,evt.resp,evt.RT,evt.code,evt.dur,[],meanRT};
         end
         
         function fixdurRecord(obj,t)
