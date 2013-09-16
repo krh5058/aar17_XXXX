@@ -394,7 +394,7 @@ classdef main < handle
                     if find(keyCode)==obj.exp.keys.esckey
                         disp('main.m (cycle) Aborted.');
                         obj.misc.abort = 1;
-                    elseif find(keyCode)==obj.exp.keys.mkey
+                    else
                         if keyflag
                             cyc3 = secs-t0;
                             if obj.debug
