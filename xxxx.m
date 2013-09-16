@@ -79,7 +79,7 @@ try
     fprintf('xxxx.m: Window initialization...\n')
     % Open and format window
     obj.monitor.w = Screen('OpenWindow',obj.monitor.whichScreen,obj.monitor.white);
-    Screen('BlendFunction',obj.monitor.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+%     Screen('BlendFunction',obj.monitor.w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Screen('TextSize',obj.monitor.w,obj.exp.txtsize);
     fprintf('xxxx.m: Window initialization success!.\n')
 catch ME
@@ -91,7 +91,7 @@ fprintf('xxxx.m: Beginning presentation sequence...\n')
 if ~obj.debug
     ListenChar(2);
     HideCursor;
-    ShowHideFullWinTaskbarMex(0);
+    ShowHideWinTaskbarMex(0);
 end
 
 % Wait for instructions
@@ -230,7 +230,7 @@ switch state
         
     otherwise
         
-        RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
+        RestrictKeysForKbCheck([]);
         
         while obj.misc.trial <= obj.exp.max_n
             
@@ -240,7 +240,7 @@ switch state
                 obj.disptxt(obj.exp.break);
                 RestrictKeysForKbCheck(obj.exp.keys.spacekey);
                 KbStrokeWait;
-                RestrictKeysForKbCheck([obj.exp.keys.esckey obj.exp.keys.mkey]);
+                RestrictKeysForKbCheck([]);
                 pause(.5);
             end
             
@@ -282,7 +282,7 @@ RestrictKeysForKbCheck([]);
 if ~obj.debug
     ListenChar(0);
     ShowCursor;
-    ShowHideFullWinTaskbarMex(1);
+    ShowHideWinTaskbarMex(1);
 end
 
 Screen('Preference','VisualDebugLevel',obj.monitor.oldVisualDebugLevel);

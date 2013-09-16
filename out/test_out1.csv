@@ -1,0 +1,3 @@
+SID,Trial,Stop,Z (s),Delay (ms),RT (s),Code,Duration (s),Mean (ms)
+test,Go,0,,,,4,1.0083,
+test,Go,0,,,,4,0.51688,
