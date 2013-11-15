@@ -144,6 +144,11 @@ switch state
             obj.disptxt(obj.exp.break);
             KbStrokeWait;
             
+            % Wait for participant
+            RestrictKeysForKbCheck(obj.exp.keys.spacekey);
+            obj.disptxt(obj.exp.advance);
+            KbStrokeWait;
+            
             % Triggering
             obj.disptxt(obj.exp.wait1);
             if obj.exp.trig % Auto-trigger

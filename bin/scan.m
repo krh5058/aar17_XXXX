@@ -53,6 +53,7 @@ classdef scan < main
                 'Both speed and accuracy are equally important.\n\n\n' ...
                 'Press any button to continue.'];
             obj.exp.break = 'Press when you are ready for the next block.';
+            obj.exp.advance = 'Press spacebar.';
             obj.exp.txtsize = 20;
             obj.exp.wordsize = 30;
             obj.exp.max_n = 50; % Max trial limit
