@@ -144,7 +144,7 @@ switch state
             obj.disptxt(obj.exp.break);
             KbStrokeWait;
             
-            % Wait for participant
+            % Wait for experimenter
             RestrictKeysForKbCheck(obj.exp.keys.spacekey);
             obj.disptxt(obj.exp.advance);
             KbStrokeWait;
